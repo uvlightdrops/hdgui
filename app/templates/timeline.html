@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<section id="gate-timeline" data-page="gate-plot" data-gate-order="{{ gate_order | tojson | forceescape }}" aria-labelledby="timeline-title">
+  <div class="heading">
+    <div><h1 id="timeline-title">{{ title }}</h1><p>{{ description }}</p></div>
+    <span class="timeline-badge">Live berechnete API-Daten · UTC</span>
+  </div>
+  <form id="timeline-range" class="timeline-panel timeline-range">
+    <label>Von (UTC)<input name="start" type="datetime-local" value="{{ start }}" min="1900-01-01T00:00" max="2099-12-31T23:59:59" step="1" required></label>
+    <label>Bis (UTC)<input name="end" type="datetime-local" min="1900-01-01T00:00" max="2099-12-31T23:59:59" step="1" required></label>
+    <label>Detailgrad<select name="samples"><option value="32">Schnell · bis 32 Punkte</option><option value="64" selected>Standard · bis 64 Punkte</option><option value="128">Fein · bis 128 Punkte</option><option value="160">Maximum · bis 160 Punkte</option></select></label>
+    <button type="submit">Zeitraum anwenden</button>
+  </form>
+  <div class="timeline-panel timeline-toolbar" aria-label="Zeitnavigation">
+    <div class="timeline-actions">
+      <button type="button" id="timeline-back" aria-label="Halben Zeitraum zurück">← Zurück</button>
+      <button type="button" id="timeline-now">Jetzt</button>
+      <button type="button" id="timeline-forward" aria-label="Halben Zeitraum vorwärts">Vorwärts →</button>
+    </div>
+    <div class="timeline-actions" aria-label="Zeitraum-Vorgaben">
+      <button type="button" data-days="1">1 Tag</button>
+      <button type="button" data-days="7">1 Woche</button>
+      <button type="button" data-days="30">1 Monat</button>
+      <button type="button" data-days="365">1 Jahr</button>
+    </div>
+    <div class="timeline-zoom">
+      <button type="button" id="timeline-out" aria-label="Herauszoomen">−</button>
+      <label for="timeline-zoom">Zoom <output id="timeline-duration"></output>
+        <input id="timeline-zoom" type="range" min="0" max="1000" step="any" value="500" aria-describedby="timeline-help">
+      </label>
+      <button type="button" id="timeline-in" aria-label="Hineinzoomen">+</button>
+    </div>
+  </div>
+  <fieldset class="timeline-panel timeline-bodies">
+    <legend>Himmelskörper &amp; Legende</legend>
+    <div class="timeline-actions"><button type="button" id="timeline-all">Alle aktivieren</button><button type="button" id="timeline-none">Alle deaktivieren</button></div>
+    <div id="timeline-bodies" class="timeline-body-list"></div>
+  </fieldset>
+  <p id="timeline-help" class="timeline-muted">Mausrad: stufenlos zoomen · Ziehen: Zeit verschieben · Tastatur im Diagramm: ← / →, + / −, Pos1 = Jetzt · Touch: ziehen oder mit zwei Fingern zoomen. Gate-Reihenfolge: 41 bei 302° bis 60.</p>
+  <div class="timeline-progress"><progress id="timeline-progress" value="0" max="1" aria-label="Berechnete Zeitpunkte"></progress><button type="button" id="timeline-retry" hidden>Erneut versuchen</button></div>
+  <p id="timeline-status" role="status" aria-live="polite" aria-atomic="true">Zeitraum wird vorbereitet …</p>
+  <div id="timeline-chart" class="timeline-chart" tabindex="0" role="group" aria-label="Interaktiver Gate-Verlauf" aria-describedby="timeline-help timeline-status"></div>
+  <p id="timeline-inspect" class="timeline-inspect" aria-live="polite">Einzelwerte: im Diagramm zeigen, tippen oder mit ↑ / ↓ durch berechnete Zeitpunkte gehen.</p>
+  <details class="timeline-panel">
+    <summary>Abtastpunkte als zugängliche Tabelle</summary>
+    <div class="timeline-table" id="timeline-table"></div>
+  </details>
+  <p class="timeline-muted">Abtastung, keine exakten Gate-Wechsel: Linien verbinden nur benachbarte berechnete Punkte. Lücken bleiben offen; der zyklische Achsensprung wird nicht verbunden. Lange Zeiträume können kurze Wechsel übersehen.</p>
+  <noscript><p role="alert">Für die interaktive Zeitleiste bitte JavaScript aktivieren. Ephemeriden und Zeitreihe bleiben separat erreichbar.</p></noscript>
+</section>
+<script src="/static/gate-timeline.js" defer></script>
+{% endblock %}

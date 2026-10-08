@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ title }}</h1>
+<p>{{ description }}</p>
+<form id="experiment-form" class="experiment-controls" data-page="{{ page }}">
+  <label>Start (UTC)<input type="datetime-local" name="start" value="{{ start }}" step="3600" required></label>
+  <label>Zeitraum<select name="days"><option value="1">1 Tag</option><option value="7">7 Tage</option><option value="30">30 Tage</option></select></label>
+  <label>Himmelskörper<select name="body">
+    <option value="all">Alle</option>
+    <option value="Sun">Sonne</option><option value="Moon">Mond</option>
+    {% for body in ["Earth", "North_Node", "South_Node", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"] %}<option value="{{ body }}">{{ body }}</option>{% endfor %}
+  </select></label>
+  <button type="submit">Laden</button>
+</form>
+<p id="experiment-status" role="status">Zeitraum wählen und laden. Die erste Abfrage kann etwas dauern.</p>
+<div id="experiment-result" class="experiment-result"></div>
+<script src="/static/experiments.js" defer></script>
+{% endblock %}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HDGUI · Human Design</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <nav class="sidebar" aria-label="Hauptnavigation">
+    <a class="brand" href="/">HDGUI</a>
+    <a href="/" {% if request.url.path == "/" %}aria-current="page"{% endif %}>Home</a>
+    <a href="/transit" {% if request.url.path.startswith("/transit") %}aria-current="page"{% endif %}>Transit</a>
+    <a href="/experiments/gate-plot" {% if request.url.path == "/experiments/gate-plot" %}aria-current="page"{% endif %}>Gate-Verlauf</a>
+    <a href="/experiments/gate-walk" {% if request.url.path == "/experiments/gate-walk" %}aria-current="page"{% endif %}>Gate-Wanderung</a>
+    <a href="/profiles" {% if request.url.path.startswith("/profiles") %}aria-current="page"{% endif %}>Geburtsprofile</a>
+    <a href="/profiles/new">Profil anlegen</a>
+    <a href="/settings" {% if request.url.path == "/settings" %}aria-current="page"{% endif %}>Settings</a>
+    <a href="/experiments/ephemeris" {% if request.url.path == "/experiments/ephemeris" %}aria-current="page"{% endif %}>Ephemeriden</a>
+    <a href="/experiments/series" {% if request.url.path == "/experiments/series" %}aria-current="page"{% endif %}>Zeitreihe</a>
+  </nav>
+  <div class="page">
+  <main>{% block content %}{% endblock %}</main>
+  {% block footer %}<footer>Lokale Einzelbenutzer-Anwendung · Aktuelle Transits und gespeicherte Geburtsprofile.</footer>{% endblock %}
+  </div>
+</body>
+</html>

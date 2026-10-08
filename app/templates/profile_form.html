@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ "Profil bearbeiten" if profile_id else "Profil anlegen" }}</h1>
+{% if errors %}<div role="alert">{% for error in errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+<form class="editor" method="post" action="{{ '/profiles/' ~ profile_id if profile_id else '/profiles' }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>Name<input name="name" value="{{ values.get('name', '') }}" maxlength="120" required></label>
+  <label>Lokale Geburtszeit<input type="datetime-local" name="birth_local" value="{{ values.get('birth_local', '') }}" step="1" required></label>
+  <label>IANA-Zeitzone<input name="timezone" value="{{ values.get('timezone', 'Europe/Berlin') }}" placeholder="Europe/Berlin" required maxlength="100"></label>
+  <label>Geburtsort<input name="place" value="{{ values.get('place', '') }}" placeholder="Stadt, Land" maxlength="200" required></label>
+  <p>Die Zeitzone bestimmt die UTC-Zeit. Der Ort wird als Profilinformation gespeichert; geozentrische HD-Charts benötigen keine Ortskoordinaten.</p>
+  <p>Geänderte Geburtszeiten machen das gespeicherte Chart ungültig. Namens- und Ortsänderungen behalten es bei.</p>
+  <div class="actions"><button type="submit">Speichern</button><a href="/profiles">Abbrechen</a></div>
+</form>
+{% endblock %}

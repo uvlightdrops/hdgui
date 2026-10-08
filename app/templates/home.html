@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block footer %}{% endblock %}
+{% block content %}
+<section class="transit-bodygraph" aria-label="Aktueller Transit-BodyGraph">
+  <a class="transit-time" href="/"><time datetime="{{ frame.timestamp_utc.isoformat() }}">{{ frame.timestamp_utc.strftime("%d.%m.%Y %H:%M:%S") }} UTC</time></a>
+  {{ bodygraph | safe }}
+</section>
+{% if autoreload %}<script src="/static/transit.js" data-reload-seconds="{{ reload_seconds }}" defer></script>{% endif %}
+{% endblock %}

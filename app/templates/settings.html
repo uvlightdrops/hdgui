@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Einstellungen</h1>
+{% if errors %}<div role="alert">{% for error in errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+<form class="editor" method="post" action="/settings">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>Transit-Cache
+    <select name="cache_seconds">
+      {% for seconds, label in options %}<option value="{{ seconds }}" {% if values.cache_seconds == seconds %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Autoreload
+    <select name="autoreload">
+      <option value="true" {% if values.autoreload == true %}selected{% endif %}>Ja</option>
+      <option value="false" {% if values.autoreload == false %}selected{% endif %}>Nein</option>
+    </select>
+  </label>
+  <p>Gilt für alle Betrachter. Autoreload verwendet das gewählte Cache-Intervall. Bereits offene Transit-Seiten übernehmen die Änderung beim nächsten Laden.</p>
+  <button type="submit">Speichern</button>
+</form>
+{% endblock %}

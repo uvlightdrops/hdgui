@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block footer %}{% endblock %}
+{% block content %}
+<section class="transit-layout" aria-label="Aktueller Transit">
+<div class="transit-wheel">{{ wheel | safe }}</div>
+<div class="transit-details">
+<a class="transit-time" href="/transit" aria-label="Transit jetzt aktualisieren"><time datetime="{{ frame.timestamp_utc.isoformat() }}">{{ frame.timestamp_utc.strftime("%d.%m.%Y %H:%M:%S") }} UTC</time></a>
+<table class="transit-table" aria-label="Aktuelle Himmelskörperpositionen">
+  <thead><tr><th scope="col">Himmelskörper</th><th scope="col">Länge</th><th scope="col" aria-sort="none"><button class="table-sort" type="button" data-sort="gate">Gate<span aria-hidden="true"> ↕</span></button></th><th scope="col">Linie</th><th scope="col" aria-sort="none"><button class="table-sort" type="button" data-sort="nextGate">Next Gate<span aria-hidden="true"> ↕</span></button></th><th scope="col" aria-sort="none" title="Nächster Gate-Wechsel in UTC, zeitliche Suchauflösung 30 Sekunden"><button class="table-sort" type="button" data-sort="eta">ETA (UTC)<span aria-hidden="true"> ↕</span></button></th></tr></thead>
+  <tbody>{% for position in frame.positions %}
+    <tr data-body="{{ position.body }}" data-gate="{{ position.gate }}"><th scope="row">{{ position.body }}</th><td>{{ "%.3f"|format(position.longitude) }}°</td><td>{{ position.gate }}</td><td>{{ position.line }}</td><td class="next-gate">…</td><td class="gate-eta">…</td></tr>
+  {% endfor %}</tbody>
+</table>
+<p id="forecast-error" role="alert" hidden></p>
+</div>
+</section>
+{% if autoreload %}<script src="/static/transit.js" data-reload-seconds="{{ reload_seconds }}" defer></script>{% endif %}
+<script src="/static/gate-forecast.js" defer></script>
+{% endblock %}
