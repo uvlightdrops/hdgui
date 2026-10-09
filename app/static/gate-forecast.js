@@ -43,7 +43,10 @@ async function loadForecast() {
                 .find(item => item.dataset.body === change.body &&
                     Number(item.dataset.gate) === change.current_gate);
             if (!row) continue;
-            row.querySelector(".next-gate").textContent = change.next_gate;
+            const link = document.createElement("a");
+            link.href = `/gates#gate-${change.next_gate}`;
+            link.textContent = change.next_gate;
+            row.querySelector(".next-gate").replaceChildren(link);
             row.dataset.nextGate = String(change.next_gate);
             const eta = new Date(change.eta_utc);
             row.dataset.eta = String(eta.getTime());

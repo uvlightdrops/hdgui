@@ -8,7 +8,7 @@
 <table class="transit-table" aria-label="Aktuelle Himmelskörperpositionen">
   <thead><tr><th scope="col">Himmelskörper</th><th scope="col">Länge</th><th scope="col" aria-sort="none"><button class="table-sort" type="button" data-sort="gate">Gate<span aria-hidden="true"> ↕</span></button></th><th scope="col">Linie</th><th scope="col" aria-sort="none"><button class="table-sort" type="button" data-sort="nextGate">Next Gate<span aria-hidden="true"> ↕</span></button></th><th scope="col" aria-sort="none" title="Nächster Gate-Wechsel in UTC, zeitliche Suchauflösung 30 Sekunden"><button class="table-sort" type="button" data-sort="eta">ETA (UTC)<span aria-hidden="true"> ↕</span></button></th></tr></thead>
   <tbody>{% for position in frame.positions %}
-    <tr data-body="{{ position.body }}" data-gate="{{ position.gate }}"><th scope="row">{{ position.body }}</th><td>{{ "%.3f"|format(position.longitude) }}°</td><td>{{ position.gate }}</td><td>{{ position.line }}</td><td class="next-gate">…</td><td class="gate-eta">…</td></tr>
+    <tr data-body="{{ position.body }}" data-gate="{{ position.gate }}"><th scope="row">{{ position.body }}</th><td>{{ "%.3f"|format(position.longitude) }}°</td><td><a href="/gates#gate-{{ position.gate }}" title="{{ gate_tooltip(position.gate) }}">{{ position.gate }}</a></td><td>{{ position.line }}</td><td class="next-gate">…</td><td class="gate-eta">…</td></tr>
   {% endfor %}</tbody>
 </table>
 <p id="forecast-error" role="alert" hidden></p>

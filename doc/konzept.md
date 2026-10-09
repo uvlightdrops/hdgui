@@ -93,6 +93,9 @@ class BirthChart(BaseModel):
 
 ## Persistenz und spätere Mehrbenutzernutzung
 
+Umgesetzt: Ein Profil kann als „aktuell“ gewählt werden (`ui_settings.active_profile_id`, nullable Fremdschlüssel mit `SET NULL`). Persönlichkeits- und Design-Aktivierungen werden je Profil aus `/calculate` (`gates.prs` und `gates.des`) normalisiert und in `birth_activations` gespeichert, getrennt vom SVG-Cache und mit eigenem Schlüssel aus UTC-Geburtszeit, Dienst und Engine-Version. Sie werden erst bei Bedarf (Overlay im Gate-Verlauf) berechnet. Die Aktiv-/Passiv-Notizen der Gate-CSV gehören zu einem einzelnen historischen Profil und werden nie auf andere Profile übertragen. Tore (64), Kanäle (36, ungeordnete Gate-Paare) und sieben Schaltkreise liegen kanonisch in der Datenbank; jeder Kanal verweist unveränderlich auf genau einen Schaltkreis. Beschreibungen werden lokal importiert, und wiederholte Schaltkreistexte stehen nur einmal beim Schaltkreis. Bei Mehrbenutzerbetrieb muss die Auswahl des aktuellen Profils pro Benutzer gespeichert werden.
+
+
 SQLAlchemy bildet die Datenzugriffsschicht, Alembic verwaltet Schema-Migrationen. Die lokale erste Version verwendet SQLite; PostgreSQL mit passendem Treiber ist für den späteren Mehrbenutzerbetrieb vorgesehen. Jede Anfrage beziehungsweise Hintergrundaufgabe erhält eine eigene Session.
 
 Ein Geburtsprofil speichert eine UUID, Anzeigenamen, lokale Geburtszeit, IANA-Zeitzone, UTC-Zeitpunkt und Geburtsort. Ein Chart-Cache speichert das erzeugte SVG, Erstellungszeitpunkt und einen Schlüssel aus UTC-Geburtszeit, Berechnungsdienst und Engine-Version. Änderungen an berechnungsrelevanten Daten invalidieren das SVG. Ein fehlgeschlagener Refresh ersetzt keine vorhandenen Daten.

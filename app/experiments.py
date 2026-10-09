@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 
 from app.api_client import ChartServiceError
 from app.bodygraph import render_gate_walk, render_walk_zodiac
+from app.gate_descriptions import gate_descriptions
 from app.transit import GATES, SIGNS
 
 MIN_TIME = datetime(1900, 1, 1, tzinfo=UTC)
@@ -105,7 +106,7 @@ class SampleCache:
             self._compute_lock.release()
 
 
-def experiment_router(client, templates):
+def experiment_router(client, templates, current_profile=lambda: None, descriptions=gate_descriptions):
     router = APIRouter(prefix="/experiments")
     cache = SampleCache(client)
     pages = {
@@ -116,9 +117,12 @@ def experiment_router(client, templates):
 
     @router.get("/gate-walk")
     def gate_walk(request: Request):
+        catalog = descriptions()
         return templates.TemplateResponse(
             request=request, name="gate_walk.html",
-            context={"graph": render_gate_walk(), "zodiac": render_walk_zodiac(), "gate_order": GATES},
+            context={"graph": render_gate_walk(catalog), "zodiac": render_walk_zodiac(catalog),
+                     "gate_order": GATES, "descriptions": catalog},
+            headers={"Cache-Control": "no-store"},
         )
 
     @router.get("/timeline")
@@ -182,6 +186,7 @@ def experiment_router(client, templates):
             request=request, name="timeline.html" if page == "gate-plot" else "experiment.html",
             context={"page": page, "title": title, "description": description,
                      "gate_order": GATES,
+                     "current_profile": current_profile() if page == "gate-plot" else None,
                      "start": datetime.now(UTC).strftime("%Y-%m-%dT%H:00")},
         )
 

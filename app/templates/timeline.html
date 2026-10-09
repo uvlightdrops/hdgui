@@ -36,6 +36,24 @@
     <div class="timeline-actions"><button type="button" id="timeline-all">Alle aktivieren</button><button type="button" id="timeline-none">Alle deaktivieren</button></div>
     <div id="timeline-bodies" class="timeline-body-list"></div>
   </fieldset>
+  <fieldset class="timeline-panel timeline-natal" aria-describedby="timeline-natal-status">
+    <legend>Geburtsprofil-Overlay</legend>
+    {% if current_profile and not current_profile.error %}
+    <label><input type="checkbox" id="timeline-natal" data-url="/profiles/current/overlay" data-profile-id="{{ current_profile.id }}">Aktuelles Profil einblenden: <strong>{{ current_profile.name }}</strong></label>
+    {% else %}
+    <label><input type="checkbox" id="timeline-natal" disabled>Aktuelles Profil einblenden</label>
+    {% endif %}
+    <ul class="timeline-natal-legend" aria-label="Legende Geburtsaktivierungen">
+      <li><span class="timeline-natal-band personality" aria-hidden="true"></span>Persönlichkeit (obere Zeilenhälfte, hell)</li>
+      <li><span class="timeline-natal-band design" aria-hidden="true"></span>Design (untere Zeilenhälfte, rot)</li>
+    </ul>
+    <p id="timeline-natal-status" class="timeline-muted" role="status" aria-live="polite">{% if current_profile and current_profile.error %}{{ current_profile.error }}{% elif current_profile %}Overlay aus. Beim Einschalten werden die Geburtsaktivierungen einmalig geladen bzw. berechnet.{% else %}Kein aktuelles Profil gewählt. Unter <a href="/profiles">Geburtsprofile</a> „Als aktuell setzen“ wählen.{% endif %}</p>
+    <details>
+      <summary>Geburtsaktivierungen als zugängliche Tabelle</summary>
+      <div class="timeline-table" id="timeline-natal-table"><p>Keine Geburtsaktivierungen geladen.</p></div>
+    </details>
+    <p class="timeline-muted">Geburtsaktivierungen sind feste Positionen des Geburtszeitpunkts. Sie werden als waagrechte Bänder über den ganzen Zeitraum gezeigt und bewegen sich nicht mit der Zeit.</p>
+  </fieldset>
   <p id="timeline-help" class="timeline-muted">Mausrad: stufenlos zoomen · Ziehen: Zeit verschieben · Tastatur im Diagramm: ← / →, + / −, Pos1 = Jetzt · Touch: ziehen oder mit zwei Fingern zoomen. Gate-Reihenfolge: 41 bei 302° bis 60.</p>
   <div class="timeline-progress"><progress id="timeline-progress" value="0" max="1" aria-label="Berechnete Zeitpunkte"></progress><button type="button" id="timeline-retry" hidden>Erneut versuchen</button></div>
   <p id="timeline-status" role="status" aria-live="polite" aria-atomic="true">Zeitraum wird vorbereitet …</p>

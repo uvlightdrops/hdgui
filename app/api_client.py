@@ -7,6 +7,7 @@ from xml.etree.ElementTree import ParseError
 
 from app.config import Settings
 from app.models import BirthProfile
+from app.natal import NatalActivations
 from app.transit import TransitFrame, TransitPosition
 
 
@@ -18,10 +19,10 @@ class ChartClient:
     def __init__(self, settings: Settings):
         self.settings = settings
 
-    def transit(self, timestamp: datetime) -> TransitFrame:
+    def _calculate(self, timestamp: datetime, service: str) -> dict:
+        """Fetch `/calculate` for a UTC instant at a zero-offset reference location."""
         if not self.settings.api_token:
             raise ChartServiceError("HD_API_TOKEN ist nicht konfiguriert.")
-        timestamp = timestamp.astimezone(UTC).replace(microsecond=0)
         params = {
             "year": timestamp.year, "month": timestamp.month, "day": timestamp.day,
             "hour": timestamp.hour, "minute": timestamp.minute, "second": timestamp.second,
@@ -37,14 +38,21 @@ class ChartClient:
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             raise ChartServiceError(
-                f"Der Transit-Dienst meldet HTTP {exc.response.status_code}."
+                f"Der {service} meldet HTTP {exc.response.status_code}."
             ) from exc
         except httpx.RequestError as exc:
-            raise ChartServiceError("Der Transit-Dienst ist nicht erreichbar.") from exc
+            raise ChartServiceError(f"Der {service} ist nicht erreichbar.") from exc
         try:
             payload = response.json()
         except ValueError as exc:
-            raise ChartServiceError("Der Transit-Dienst liefert kein lesbares JSON.") from exc
+            raise ChartServiceError(f"Der {service} liefert kein lesbares JSON.") from exc
+        if not isinstance(payload, dict):
+            raise ChartServiceError(f"Der {service} liefert kein JSON-Objekt.")
+        return payload
+
+    def transit(self, timestamp: datetime) -> TransitFrame:
+        timestamp = timestamp.astimezone(UTC).replace(microsecond=0)
+        payload = self._calculate(timestamp, "Transit-Dienst")
         try:
             positions = payload["gates"]["prs"]["Planets"]
             return TransitFrame(
@@ -53,6 +61,21 @@ class ChartClient:
             )
         except (KeyError, TypeError, ValidationError) as exc:
             raise ChartServiceError("Die API-Antwort enthält keine gültigen Transitpositionen.") from exc
+
+    def natal(self, birth_utc: datetime) -> NatalActivations:
+        """Personality and design activations for a naive UTC birth time."""
+        birth = birth_utc.replace(tzinfo=UTC, microsecond=0)
+        payload = self._calculate(birth, "Berechnungsdienst")
+        try:
+            gates = payload["gates"]
+            return NatalActivations(
+                personality=[TransitPosition.model_validate(item) for item in gates["prs"]["Planets"]],
+                design=[TransitPosition.model_validate(item) for item in gates["des"]["Planets"]],
+            )
+        except (KeyError, TypeError, ValidationError) as exc:
+            raise ChartServiceError(
+                "Die API-Antwort enthält keine gültigen Persönlichkeits- und Design-Aktivierungen."
+            ) from exc
 
     def render(self, profile: BirthProfile) -> str:
         if not self.settings.api_token:

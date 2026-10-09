@@ -4,6 +4,7 @@ from pathlib import Path
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 from app.transit import GATES, SIGNS, TransitFrame
+from app.gate_descriptions import gate_tooltip
 
 
 CENTERS = {
@@ -25,6 +26,18 @@ CHANNELS = (
     (27, 50), (34, 57), (59, 6), (42, 53), (3, 60), (9, 52),
     (32, 54), (28, 38), (18, 58), (19, 49), (39, 55), (41, 30),
 )
+CENTER_MARKERS = {
+    "Head": (117, 27, "#ffdf9c"),
+    "Ajna": (117, 63, "#92ce79"),
+    "Throat": (117, 117, "#88dfff"),
+    "G": (117, 171, "#e0a8ff"),
+    "Heart": (160, 199, "#ff8181"),
+    "Spleen": (39, 238, "#ffb780"),
+    "Solar": (195, 238, "#ffa8d5"),
+    "Sacral": (117, 240, "#65e4c1"),
+    "Root": (117, 291, "#a8baff"),
+}
+GATE_CENTERS = {gate: name for name, (_, _, gates) in CENTERS.items() for gate in gates}
 
 
 @lru_cache(maxsize=1)
@@ -44,7 +57,7 @@ def draw_center(root, data, attrs):
         SubElement(root, "path", {"d": data["path"], **attrs})
 
 
-def render_gate_walk() -> str:
+def render_gate_walk(descriptions=None) -> str:
     layout = load_layout()
     root = Element("svg", {
         "xmlns": "http://www.w3.org/2000/svg", "viewBox": "0 0 240 320",
@@ -53,10 +66,17 @@ def render_gate_walk() -> str:
     SubElement(root, "title", {"id": "gate-walk-title"}).text = "Wanderung durch die Tore in Tierkreis-Reihenfolge"
     for data in layout["centers"].values():
         draw_center(root, data, {"fill": "#1a2635", "stroke": "#60758e", "stroke-width": ".7"})
+    for name, (x, y, color) in CENTER_MARKERS.items():
+        marker = SubElement(root, "circle", {
+            "cx": str(x), "cy": str(y), "r": "2.5", "fill": color,
+            "data-center-marker": name,
+        })
+        SubElement(marker, "title").text = name
     for gate in GATES:
         coords = layout["gates_coords"][str(gate)]
         x, y = coords["x"] + 3.2, coords["y"] + 3
         group = SubElement(root, "g", {"data-walk-gate": str(gate)})
+        SubElement(group, "title").text = gate_tooltip(gate, descriptions)
         SubElement(group, "circle", {
             "cx": str(x), "cy": str(y), "r": "3", "fill": "#1a2635",
             "stroke": "#60758e", "stroke-width": ".3",
@@ -77,7 +97,7 @@ def render_gate_walk() -> str:
     return tostring(root, encoding="unicode")
 
 
-def render_walk_zodiac() -> str:
+def render_walk_zodiac(descriptions=None) -> str:
     import math
 
     root = Element("svg", {
@@ -93,6 +113,23 @@ def render_walk_zodiac() -> str:
     for radius in (76, 94, 116):
         SubElement(root, "circle", {"cx": "120", "cy": "120", "r": str(radius),
                                   "fill": "none", "stroke": "#60758e", "stroke-width": ".5"})
+    for index, gate in enumerate(GATES):
+        start = 302 + index * 360 / 64
+        end = start + 360 / 64
+        outer_start, outer_end = point(start, 94), point(end, 94)
+        inner_end, inner_start = point(end, 76), point(start, 76)
+        center = GATE_CENTERS[gate]
+        path = SubElement(root, "path", {
+            "d": (
+                f"M {outer_start[0]} {outer_start[1]} "
+                f"A 94 94 0 0 1 {outer_end[0]} {outer_end[1]} "
+                f"L {inner_end[0]} {inner_end[1]} "
+                f"A 76 76 0 0 0 {inner_start[0]} {inner_start[1]} Z"
+            ),
+            "fill": CENTER_MARKERS[center][2], "fill-opacity": "0",
+            "data-zodiac-gate": str(gate), "data-center": center,
+        })
+        SubElement(path, "title").text = f"{gate_tooltip(gate, descriptions)}\nZentrum: {center}"
     for index, sign in enumerate(SIGNS):
         x1, y1 = point(index * 30, 94)
         x2, y2 = point(index * 30, 116)
@@ -123,7 +160,7 @@ def render_walk_zodiac() -> str:
     return tostring(root, encoding="unicode")
 
 
-def render_bodygraph(frame: TransitFrame) -> str:
+def render_bodygraph(frame: TransitFrame, descriptions=None) -> str:
     active = {position.gate for position in frame.positions}
     complete = [pair for pair in CHANNELS if set(pair) <= active]
     gate_centers = {gate: name for name, (_, _, gates) in CENTERS.items() for gate in gates}
@@ -131,9 +168,8 @@ def render_bodygraph(frame: TransitFrame) -> str:
     layout = load_layout()
     root = Element("svg", {
         "xmlns": "http://www.w3.org/2000/svg", "viewBox": "0 0 240 320",
-        "role": "img", "aria-labelledby": "bodygraph-title",
+        "role": "img", "aria-label": "BodyGraph des aktuellen Transits",
     })
-    SubElement(root, "title", {"id": "bodygraph-title"}).text = "BodyGraph des aktuellen Transits"
     SubElement(root, "path", {
         "d": layout["body_outline"], "fill": "#e6e6e6", "stroke": "black", "stroke-width": ".8",
     })
@@ -160,6 +196,7 @@ def render_bodygraph(frame: TransitFrame) -> str:
         coords = layout["gates_coords"][str(gate)]
         x, y = coords["x"] + 3.2, coords["y"] + 3
         group = SubElement(root, "g", {"data-active-gate": str(gate)})
+        SubElement(group, "title").text = gate_tooltip(gate, descriptions)
         SubElement(group, "circle", {
             "cx": str(x), "cy": str(y), "r": "3.5", "fill": "white",
             "stroke": "purple", "stroke-width": ".5",

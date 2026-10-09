@@ -17,10 +17,11 @@ dependencies = [
     "python-multipart>=0.0.18,<1",
     "itsdangerous>=2.2,<3",
     "defusedxml>=0.7,<1",
+    "PyYAML>=6,<7",
 ]
 
 [tool.setuptools.packages.find]
 include = ["app*"]
 
 [tool.setuptools.package-data]
-app = ["templates/*.html", "static/*.css", "static/*.js", "data/*"]
+app = ["templates/*.html", "static/*.css", "static/*.js", "data/*.json", "data/*.yaml", "data/NOTICE", "data/LICENSE-AGPL"]

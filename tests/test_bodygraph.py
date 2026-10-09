@@ -2,7 +2,10 @@ import unittest
 from datetime import UTC, datetime
 from xml.etree import ElementTree
 
-from app.bodygraph import CENTERS, CHANNELS, render_bodygraph, render_gate_walk
+from app.bodygraph import (
+    CENTERS, CHANNELS, CENTER_MARKERS, GATE_CENTERS,
+    render_bodygraph, render_gate_walk, render_walk_zodiac,
+)
 from app.transit import GATES, TransitFrame, TransitPosition
 
 
@@ -15,6 +18,18 @@ class BodyGraphTests(unittest.TestCase):
         self.assertFalse(any("data-channel" in item.attrib for item in root.iter()))
         ids = {item.get("id") for item in root.iter()}
         self.assertTrue({"gate-walk-dot", "gate-walk-trail"} <= ids)
+        markers = [item for item in root.iter() if "data-center-marker" in item.attrib]
+        self.assertEqual(len(markers), 9)
+        self.assertEqual(len({item.get("fill") for item in markers}), 9)
+
+    def test_zodiac_sectors_use_gate_center_colors(self):
+        root = ElementTree.fromstring(render_walk_zodiac())
+        sectors = [item for item in root.iter() if "data-zodiac-gate" in item.attrib]
+        self.assertEqual([int(item.get("data-zodiac-gate")) for item in sectors], list(GATES))
+        for sector in sectors:
+            center = GATE_CENTERS[int(sector.get("data-zodiac-gate"))]
+            self.assertEqual(sector.get("fill"), CENTER_MARKERS[center][2])
+            self.assertEqual(sector.get("fill-opacity"), "0")
 
     def test_only_transit_activations_and_complete_channels(self):
         frame = TransitFrame(timestamp_utc=datetime(2026, 10, 8, tzinfo=UTC), positions=[

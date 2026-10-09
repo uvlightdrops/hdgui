@@ -1,0 +1,497 @@
+schema_version: 2
+gates:
+- number: 1
+  name: Creative - The Gate of Self-Expression
+  description: Eigenständiger Ausdruck schöpferischer Impulse
+  center: G
+- number: 2
+  name: Receptive - The Gate of The Direction of the Self
+  description: Innere Ausrichtung für den eigenen Weg
+  center: G
+- number: 3
+  name: Ordering - The Gate of Difficulty at the Beginning
+  description: Erste Ordnung im Wandel neuer Möglichkeiten
+  center: Sacral
+- number: 4
+  name: Youthful Folly - The Gate of Formulization
+  description: Ideen in klare Erklärungen bringen
+  center: Ajna
+- number: 5
+  name: Waiting - The Gate of Fixed Patterns
+  description: Verlässlicher Rhythmus im Alltag
+  center: Sacral
+- number: 6
+  name: Conflict - The Gate of Friction
+  description: Nähe und Grenzen in Beziehungen ausloten
+  center: Solar
+- number: 7
+  name: Army - The Gate of The role of the self in interaction
+  description: Die eigene Richtung in Gruppen einbringen
+  center: G
+- number: 8
+  name: Holding Together - The Gate of Contribution
+  description: Persönliche Note mit anderen teilen
+  center: Throat
+- number: 9
+  name: The Taming Power of the Small - The Gate of Focus
+  description: Aufmerksamkeit auf kleine Schritte bündeln
+  center: Sacral
+- number: 10
+  name: Treading - The Gate of Behaviors of the Self
+  description: Dem eigenen Wesen treu handeln
+  center: G
+- number: 11
+  name: Peace - The Gate of Ideas
+  description: Neue Vorstellungen und Denkanstöße sammeln
+  center: Ajna
+- number: 12
+  name: Standstill - The Gate of Caution
+  description: Gefühle mit passendem Timing ausdrücken
+  center: Throat
+- number: 13
+  name: The Fellowship of Man - The Gate of the Listener
+  description: Erfahrungen aufmerksam aufnehmen
+  center: G
+- number: 14
+  name: Possession in Great Measure - Power Skills
+  description: Energie gezielt für eigene Vorhaben einsetzen
+  center: Sacral
+- number: 15
+  name: Modesty - The Gate of Extremes
+  description: Raum für unterschiedliche Lebensrhythmen lassen
+  center: G
+- number: 16
+  name: Enthusiasm - The Gate of Skills
+  description: Fähigkeiten durch Übung sicher entfalten
+  center: Throat
+- number: 17
+  name: Following - The Gate of Opinions
+  description: Beobachtungen zu eigenen Standpunkten ordnen
+  center: Ajna
+- number: 18
+  name: Work on what has been spoilt - The Gate of Correction
+  description: Gewohnte Abläufe kritisch verbessern
+  center: Spleen
+- number: 19
+  name: Approach - The Gate of Wanting
+  description: Bedürfnisse früh wahrnehmen und benennen
+  center: Root
+- number: 20
+  name: Contemplation - The Gate of the Now
+  description: Gegenwärtige Eindrücke unmittelbar ausdrücken
+  center: Throat
+- number: 21
+  name: Biting Through - The Gate of the Hunter/Huntress
+  description: Verantwortung für Ressourcen übernehmen
+  center: Heart
+- number: 22
+  name: Grace - The Gate of Openness
+  description: Auf Stimmungen mit offenem Herzen reagieren
+  center: Solar
+- number: 23
+  name: Splitting Apart – The Gate of Assimilation
+  description: Komplexe Einsichten verständlich formulieren
+  center: Throat
+- number: 24
+  name: The Return – The Gate of Realization
+  description: Gedanken in ruhige Klarheit zurückführen
+  center: Ajna
+- number: 25
+  name: Innocence - The Gate of Spirit of the Self
+  description: Mit unverstellter Offenheit begegnen
+  center: G
+- number: 26
+  name: The Taming Power of the Great - The Gate of the Ego
+  description: Anliegen überzeugend und geschickt vermitteln
+  center: Heart
+- number: 27
+  name: Nourishment - The Gate of Caring
+  description: Für Versorgung und Fürsorge sorgen
+  center: Sacral
+- number: 28
+  name: Preponderance of the Great - The Gate of The Game Player
+  description: Herausforderungen nach eigenem Sinn durchsuchen
+  center: Spleen
+- number: 29
+  name: Abysmal - The Gate of Perseverance
+  description: Sich mit Ausdauer auf Erfahrungen einlassen
+  center: Sacral
+- number: 30
+  name: The Clinging Fire - The Gate of Feelings
+  description: Starke Wünsche als Antrieb erkennen
+  center: Solar
+- number: 31
+  name: Influence - The Gate of Influence
+  description: Gruppen durch klare Impulse beeinflussen
+  center: Throat
+- number: 32
+  name: Duration - The Gate of Continuity
+  description: Bewährtes bewahren und Entwicklung einschätzen
+  center: Spleen
+- number: 33
+  name: Retreat - The Gate of Privacy
+  description: Erlebtes in stillen Rückblick verwandeln
+  center: Throat
+- number: 34
+  name: The Power of the Great - The Gate of Power
+  description: Kraft unmittelbar in Handlungen einsetzen
+  center: Sacral
+- number: 35
+  name: Progress - The Gate of Change
+  description: Aus Erfahrung neue Wege erschließen
+  center: Throat
+- number: 36
+  name: The Darkening of the Light - The Gate of Crisis
+  description: Durch Umbrüche emotionale Reife gewinnen
+  center: Solar
+- number: 37
+  name: The Family - The Gate of Friendship
+  description: Zugehörigkeit in verlässlichen Austausch gestalten
+  center: Solar
+- number: 38
+  name: Opposition - The Gate of The Fighter
+  description: Für persönlich wichtige Ziele einstehen
+  center: Root
+- number: 39
+  name: Obstruction - The Gate of Provocation
+  description: Festgefahrene Stimmungen in Bewegung bringen
+  center: Root
+- number: 40
+  name: Deliverance - The Gate of Aloneness
+  description: Nach Einsatz bewusst Rückzug wählen
+  center: Heart
+- number: 41
+  name: Decrease - The Gate of Contraction
+  description: Neue Vorhaben aus kleinen Impulsen beginnen
+  center: Root
+- number: 42
+  name: Increase - The Gate of Growth
+  description: Angefangene Entwicklungen zu Ende führen
+  center: Sacral
+- number: 43
+  name: Breakthrough - The Gate of Insight
+  description: Eigene Erkenntnisse überraschend klar erfassen
+  center: Ajna
+- number: 44
+  name: Coming to Meet - The Gate of Alertness
+  description: Frühere Erfahrungen für Begegnungen nutzen
+  center: Spleen
+- number: 45
+  name: Gathering Together - The Gate of the Gatherer
+  description: Gemeinsame Mittel und Aufgaben koordinieren
+  center: Throat
+- number: 46
+  name: Pushing Upward - The Gate of the Determination of the Self
+  description: Durch körperliche Präsenz Chancen entdecken
+  center: G
+- number: 47
+  name: Oppression - The Gate of Realization
+  description: Eindrücke zu einer stimmigen Deutung verbinden
+  center: Ajna
+- number: 48
+  name: The Well - The Gate of Depth
+  description: Erlerntes Wissen in Tiefe ausbauen
+  center: Spleen
+- number: 49
+  name: Revolution - The Gate of Principles
+  description: Eigene Werte in Beziehungen vertreten
+  center: Solar
+- number: 50
+  name: The Cauldron - The Gate of Values
+  description: Gemeinsame Regeln verantwortungsvoll hüten
+  center: Spleen
+- number: 51
+  name: Arousing - The Gate of Shock
+  description: Mut durch überraschende Herausforderungen finden
+  center: Heart
+- number: 52
+  name: Keeping Still (Mountain) - The Gate of Stillness
+  description: In der Ruhe konzentriert bleiben
+  center: Root
+- number: 53
+  name: Development - The Gate of Beginnings
+  description: Veränderungen Schritt für Schritt anstoßen
+  center: Root
+- number: 54
+  name: The Marrying Maiden - The Gate of Drive
+  description: Ehrgeiz in tragfähige Ziele lenken
+  center: Root
+- number: 55
+  name: Abundance - The Gate of Spirit
+  description: Gefühle in eigene Kraft verwandeln
+  center: Solar
+- number: 56
+  name: The Wanderer - The Gate of Stimulation
+  description: Erlebnisse in anschauliche Geschichten fassen
+  center: Throat
+- number: 57
+  name: The Gentle - The Gate of Intuitive Clarity
+  description: Feine Signale schnell und klar erkennen
+  center: Spleen
+- number: 58
+  name: The Joyous - Vitality
+  description: Freude an Verbesserung und Lebendigkeit finden
+  center: Root
+- number: 59
+  name: Dispersion - The Gate of Sexuality
+  description: Vertrauen für echte Nähe aufbauen
+  center: Sacral
+- number: 60
+  name: Limitation - The Gate of Acceptance
+  description: Grenzen als Rahmen für Neues annehmen
+  center: Root
+- number: 61
+  name: Inner Truth - The Gate of Mystery
+  description: Geheimnissen mit stiller Neugier nachgehen
+  center: Head
+- number: 62
+  name: Preponderance of the Small - The Gate of Details
+  description: Einzelheiten präzise benennen
+  center: Throat
+- number: 63
+  name: After Completion - The Gate of Doubt
+  description: Aussagen mit klugen Fragen prüfen
+  center: Head
+- number: 64
+  name: Before Completion - The Gate of Confusion
+  description: Unfertige Eindrücke neu zusammensetzen
+  center: Head
+circuits:
+- id: integration
+  name: Schaltkreis der Integration
+  description: Unmittelbare Eigenständigkeit und spontanes Handeln
+- id: centering
+  name: Schaltkreis der Zentrierung
+  description: Selbstvertrauen für mutige Entscheidungen
+- id: knowing
+  name: Schaltkreis des Wissens
+  description: Individuelle Einsichten und neue Ausdrucksformen
+- id: ego
+  name: Ego-Schaltkreis
+  description: Willenskraft für Austausch und gemeinsame Vorhaben
+- id: defense
+  name: Schaltkreis der Verteidigung
+  description: Fürsorge, Zugehörigkeit und gegenseitige Unterstützung
+- id: logic
+  name: Schaltkreis der Logik
+  description: Prüfen, ordnen und schrittweise verbessern
+- id: sensing
+  name: Schaltkreis der Wahrnehmung
+  description: Erfahrungen in Gefühle, Geschichten und Entwicklung wandeln
+channels:
+- gates:
+  - 1
+  - 8
+  circuit_id: knowing
+  name: Kanal der Inspiration
+  description: Eigene Ideen sichtbar in die Welt tragen
+- gates:
+  - 2
+  - 14
+  circuit_id: knowing
+  name: Kanal des Alchemisten
+  description: Richtung mit beständiger Lebensenergie verbinden
+- gates:
+  - 3
+  - 60
+  circuit_id: knowing
+  name: kanal Der Mutation
+  description: Wandel innerhalb klarer Grenzen in Gang setzen
+- gates:
+  - 4
+  - 63
+  circuit_id: logic
+  name: Kanal des Logischen Verstands
+  description: Fragen durch geordnete Überlegung beantworten
+- gates:
+  - 5
+  - 15
+  circuit_id: logic
+  name: Kanal des Rhythmus
+  description: Gemeinsamen Takt mit natürlicher Vielfalt finden
+- gates:
+  - 6
+  - 59
+  circuit_id: defense
+  name: kanal der Verbindungen/ Reproduktion
+  description: Vertrauen schaffen und Grenzen aushandeln
+- gates:
+  - 7
+  - 31
+  circuit_id: logic
+  name: Kanal des Alpha
+  description: Gruppen durch eine gemeinsame Richtung führen
+- gates:
+  - 9
+  - 52
+  circuit_id: logic
+  name: kanal der Konzentration
+  description: Ruhe für beharrliche Konzentration nutzen
+- gates:
+  - 10
+  - 20
+  circuit_id: integration
+  name: Kanal des Erwachens
+  description: Eigene Haltung im gegenwärtigen Moment zeigen
+- gates:
+  - 10
+  - 34
+  circuit_id: centering
+  name: Kanal der Erforschung
+  description: Persönlichen Weg durch direkte Kraft erproben
+- gates:
+  - 10
+  - 57
+  circuit_id: integration
+  name: kanal des Überlebens
+  description: Instinkt mit authentischem Handeln verbinden
+- gates:
+  - 11
+  - 56
+  circuit_id: sensing
+  name: Kanal der Wissbegierde
+  description: Vorstellungen lebendig in Geschichten vermitteln
+- gates:
+  - 12
+  - 22
+  circuit_id: knowing
+  name: kanal der Offenheit
+  description: Stimmungen mit ausgewählten Worten ausdrücken
+- gates:
+  - 13
+  - 33
+  circuit_id: sensing
+  name: Kanal der Neugier
+  description: Vergangene Erfahrungen bewahren und teilen
+- gates:
+  - 16
+  - 48
+  circuit_id: logic
+  name: Kanal des Talentes
+  description: Können durch Tiefe und wiederholte Praxis entwickeln
+- gates:
+  - 17
+  - 62
+  circuit_id: logic
+  name: Kanal der Akzeptanz
+  description: Meinungen mit greifbaren Einzelheiten ordnen
+- gates:
+  - 18
+  - 58
+  circuit_id: logic
+  name: kanal Des Urteilens
+  description: Verbesserung mit Freude an Qualität verbinden
+- gates:
+  - 19
+  - 49
+  circuit_id: ego
+  name: kanal der Empfindlichkeit
+  description: Bedürfnisse mit gemeinsamen Werten abgleichen
+- gates:
+  - 20
+  - 34
+  circuit_id: integration
+  name: Kanal vom Charisma
+  description: Kraft unmittelbar und aus eigenem Antrieb einsetzen
+- gates:
+  - 20
+  - 57
+  circuit_id: knowing
+  name: Kanal der unfreiwilligen Impulse
+  description: Schnelle Wahrnehmung im Jetzt ausdrücken
+- gates:
+  - 21
+  - 45
+  circuit_id: ego
+  name: Geldkanal
+  description: Gemeinsame Mittel verwalten und verteilen
+- gates:
+  - 23
+  - 43
+  circuit_id: knowing
+  name: kanal des Strukturierens
+  description: Eigenständige Einsichten verständlich ausdrücken
+- gates:
+  - 24
+  - 61
+  circuit_id: knowing
+  name: Kanal des Denkers
+  description: Innere Fragen geduldig zu Erkenntnissen formen
+- gates:
+  - 25
+  - 51
+  circuit_id: centering
+  name: Kanal der Einweihung
+  description: Offenheit durch mutige Wendungen erproben
+- gates:
+  - 26
+  - 44
+  circuit_id: ego
+  name: Unternehmenskanal
+  description: Erfahrungen geschickt für gemeinsame Ziele nutzen
+- gates:
+  - 27
+  - 50
+  circuit_id: defense
+  name: Kanal der Erhaltung
+  description: Fürsorge mit Verantwortung und Regeln verbinden
+- gates:
+  - 28
+  - 38
+  circuit_id: knowing
+  name: Kanal der Anstrengung
+  description: Sinn in Herausforderungen und Widerstand finden
+- gates:
+  - 29
+  - 46
+  circuit_id: sensing
+  name: kanal der Entdeckungen
+  description: Durch beharrliches Mitmachen Erfahrungen vertiefen
+- gates:
+  - 30
+  - 41
+  circuit_id: sensing
+  name: Kanal der Anerkennung
+  description: Wünsche zu emotional bedeutsamen Erlebnissen bündeln
+- gates:
+  - 32
+  - 54
+  circuit_id: ego
+  name: kanal der Transformation
+  description: Ausdauer in nachhaltige Entwicklung verwandeln
+- gates:
+  - 34
+  - 57
+  circuit_id: integration
+  name: kanal der Kraft/ Power
+  description: Instinkt und körperliche Kraft unmittelbar vereinen
+- gates:
+  - 35
+  - 36
+  circuit_id: sensing
+  name: Kanal der Vielseitigkeit
+  description: Neue Erfahrungen durch emotionale Wendepunkte sammeln
+- gates:
+  - 37
+  - 40
+  circuit_id: ego
+  name: Kanal der Gemeinschaft
+  description: Zugehörigkeit durch gegenseitige Unterstützung gestalten
+- gates:
+  - 39
+  - 55
+  circuit_id: knowing
+  name: Kanal der Emotion
+  description: Gefühle anregen und persönlichen Ausdruck beleben
+- gates:
+  - 42
+  - 53
+  circuit_id: sensing
+  name: Kanal der Zyklen
+  description: Entwicklungen vom Start bis zum Abschluss begleiten
+- gates:
+  - 47
+  - 64
+  circuit_id: sensing
+  name: Kanal des abstrakten Denkens
+  description: Verstreute Eindrücke zu verständlichen Mustern bündeln

@@ -17,6 +17,22 @@ footer { color: #aab6c8; font-size: .9rem; }
 .profile-card .chart { width: 35%; max-width: 350px; margin: 0; flex-shrink: 0; }
 .profile-details { min-width: 0; }
 .profile-details h2 { margin-top: 0; }
+.gate-index { display: flex; flex-wrap: wrap; gap: .25rem; margin-bottom: .75rem; }
+.gate-index a { padding: .3rem; min-width: 1.5rem; text-align: center; }
+.gate-description { margin-bottom: .5rem; scroll-margin-top: 1rem; padding: .65rem .9rem; border-radius: .5rem; font-size: .9rem; line-height: 1.4; }
+.gate-description h2 { font-size: 1.05rem; margin: 0 0 .3rem; }
+.gate-description p { margin: .25rem 0 0; }
+.catalog-page > h1 { margin: 0 0 .4rem; font-size: 1.5rem; }
+.catalog-page > p, .catalog-page > label { margin: .4rem 0; }
+.catalog-personality { --activation-color: #85dacc; }
+.catalog-design { --activation-color: #f39da9; }
+.catalog-both { --activation-color: #d0acff; }
+.catalog-legend span, .catalog-activation { color: var(--activation-color); }
+.catalog-active { border: 2px solid var(--activation-color); box-shadow: inset 4px 0 var(--activation-color); }
+.gate-index .catalog-active { color: var(--activation-color); border-radius: .4rem; }
+.catalog-activation { font-weight: 600; }
+.walk-description { margin-top: 1rem; padding: 1rem; border: 1px solid #344356; border-radius: .5rem; }
+.walk-description h2 { font-size: 1rem; margin-top: 0; }
 article, .editor, .empty { background: #1a2635; padding: 1.5rem; border-radius: 1rem; border: 1px solid #344356; }
 button, .button { background: #85dacc; color: #101722; border: none; border-radius: .4rem; padding: .65rem 1rem; cursor: pointer; font: inherit; text-decoration: none; }
 button.danger { background: #efabab; }
@@ -45,13 +61,20 @@ caption { text-align: left; margin: 1rem 0; }
 .transit-bodygraph { max-width: 600px; margin: auto; }
 .gate-walk-graph { max-width: 600px; margin: 1rem auto; overflow: hidden; touch-action: none; cursor: grab; user-select: none; }
 .gate-walk-graph:active { cursor: grabbing; }
-.gate-walk-layout { display: grid; grid-template-columns: minmax(0, 600px) minmax(0, 300px); justify-content: center; align-items: center; gap: 2rem; }
+.gate-walk-layout { display: grid; grid-template-columns: 180px minmax(0, 600px) minmax(0, 420px); justify-content: center; align-items: center; gap: 1.5rem; }
+.gate-walk-controls { display: flex; flex-direction: column; gap: .85rem; align-self: start; }
+.gate-walk-controls label { margin: 0; }
+.gate-walk-controls button { width: 100%; }
+.gate-walk-controls output { font-variant-numeric: tabular-nums; }
+.gate-walk-controls p { margin: 0; font-size: .8rem; color: #bac8da; line-height: 1.5; }
 .gate-walk-layout .gate-walk-graph { width: 100%; }
-.gate-walk-zodiac { width: 100%; max-width: 300px; }
-.gate-walk-zodiac svg { display: block; width: 100%; height: auto; max-height: 39vh; }
+.gate-walk-zodiac { width: 100%; max-width: 420px; overflow: hidden; touch-action: none; cursor: grab; user-select: none; }
+.gate-walk-zodiac:active { cursor: grabbing; }
+.gate-walk-zodiac svg { display: block; width: 100%; height: auto; max-height: 54.6vh; }
 @media (max-width: 800px) {
-  .gate-walk-layout { grid-template-columns: minmax(0, 1fr); }
-  .gate-walk-zodiac { justify-self: center; }
+  .gate-walk-layout { grid-template-columns: 140px minmax(0, 1fr); gap: .75rem; }
+  .gate-walk-controls { grid-row: span 2; }
+  .gate-walk-zodiac { grid-column: 2; justify-self: center; }
 }
 .gate-walk-graph svg { display: block; width: 100%; height: auto; max-height: 78vh; }
 .transit-bodygraph svg { display: block; width: 100%; height: auto; max-height: 85vh; background: white; border-radius: .5rem; }
@@ -113,3 +136,22 @@ button:disabled { opacity: .6; cursor: wait; }
   .page { margin-left: 110px; }
   main, footer { padding: .75rem; }
 }
+.current-profile { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: 1.5rem; padding: .75rem 1rem; border: 1px solid #344356; border-radius: .75rem; background: #1a2635; }
+.current-profile form, .actions form { margin: 0; }
+button.link-button { background: none; color: #85dacc; padding: .25rem 0; text-decoration: underline; border-radius: 0; }
+button.link-button:hover { color: #a8f1df; }
+.profile-card.is-current { border-color: #ffdf9c; box-shadow: 0 0 0 1px #ffdf9c; }
+.current-badge { display: inline-block; font-size: .8rem; vertical-align: middle; padding: .15rem .6rem; border-radius: 1rem; background: #ffdf9c; color: #101722; }
+.profile-muted { color: #aab6c8; font-size: .9rem; }
+.profile-activations summary { cursor: pointer; }
+.profile-activations p { font-size: .9rem; line-height: 1.5; }
+.timeline-natal { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; align-items: center; }
+.timeline-natal legend { font-weight: 700; padding: 0 .5rem; }
+.timeline-natal > label { margin: 0; }
+.timeline-natal-legend { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0; padding: 0; list-style: none; font-size: .9rem; }
+.timeline-natal-legend li { display: flex; align-items: center; gap: .4rem; }
+.timeline-natal-band { display: inline-block; width: 24px; height: 10px; border-radius: 2px; }
+.timeline-natal-band.personality { background: #e3eaf3; opacity: .55; border-top: 2px solid #e3eaf3; }
+.timeline-natal-band.design { background: #ff6b6b; opacity: .55; border-bottom: 2px dashed #ff6b6b; }
+.timeline-natal details { flex-basis: 100%; }
+#timeline-natal-status { flex-basis: 100%; margin: 0; }

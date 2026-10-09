@@ -43,8 +43,29 @@
         }
         return result;
     }
+    const NATAL_SOURCES = ["personality", "design"];
+    function validOverlay(overlay) {
+        const valid = item => item && typeof item.body === "string" && Number.isInteger(item.gate) &&
+            item.gate >= 1 && item.gate <= 64 && Number.isInteger(item.line) && item.line >= 1 &&
+            item.line <= 6 && Number.isFinite(item.longitude);
+        return Boolean(overlay?.profile && typeof overlay.profile.name === "string" &&
+            NATAL_SOURCES.every(source => Array.isArray(overlay[source]) && overlay[source].length &&
+                overlay[source].every(valid)) && Array.isArray(overlay.channels));
+    }
+    function natalBands(overlay) {
+        // Fixed birth activations per gate row, kept apart by source.
+        const bands = new Map();
+        for (const source of NATAL_SOURCES) {
+            for (const item of overlay?.[source] || []) {
+                if (!bands.has(item.gate)) bands.set(item.gate, {personality: [], design: []});
+                bands.get(item.gate)[source].push(item);
+            }
+        }
+        return bands;
+    }
     if (typeof module !== "undefined" && module.exports) {
-        module.exports = {clampViewport, zoomViewport, panViewport, adjacentSegments, prioritized, MIN_TIME, MAX_TIME, MIN_SPAN};
+        module.exports = {clampViewport, zoomViewport, panViewport, adjacentSegments, prioritized,
+            validOverlay, natalBands, MIN_TIME, MAX_TIME, MIN_SPAN};
     }
     if (typeof document === "undefined") return;
     const root = document.getElementById("gate-timeline");
@@ -111,6 +132,95 @@
         byId("bodies").append(wrapper);
     }
     knownBodies.forEach(([key, label]) => addBody(key, label));
+    const bodyNames = new Map(knownBodies);
+    const sourceLabels = {personality: "Persönlichkeit", design: "Design"};
+    const natalToggle = byId("natal"), natalStatus = byId("natal-status");
+    // Overlay state is independent from transit sampling: navigation never refetches it.
+    const natal = {enabled: false, data: null, request: 0};
+    function setNatalStatus(text, alert = false) {
+        if (!natalStatus) return;
+        natalStatus.textContent = text;
+        natalStatus.setAttribute("role", alert ? "alert" : "status");
+    }
+    function natalSummary() {
+        const data = natal.data;
+        return `Overlay aktiv: ${data.profile.name} · ${natalBands(data).size} Tore, ${data.channels.length} Kanäle. ` +
+            "Feste Geburtsaktivierungen, keine zeitliche Bewegung.";
+    }
+    function renderNatalTable() {
+        const target = byId("natal-table");
+        if (!target) return;
+        if (!natal.data) {
+            target.replaceChildren(node("p", "Keine Geburtsaktivierungen geladen."));
+            return;
+        }
+        const data = natal.data;
+        const table = node("table"), head = node("thead"), row = node("tr"), tbody = node("tbody");
+        table.append(node("caption", `Geburtsaktivierungen von ${data.profile.name} (Geburt ${dateLabel(data.profile.birth_utc)} UTC)`));
+        for (const title of ["Quelle", "Himmelskörper", "Gate.Linie", "Länge"]) {
+            const th = node("th", title);
+            th.scope = "col";
+            row.append(th);
+        }
+        head.append(row);
+        table.append(head, tbody);
+        for (const source of NATAL_SOURCES) {
+            for (const item of data[source]) {
+                const tr = node("tr");
+                [sourceLabels[source], bodyNames.get(item.body) || item.body, `${item.gate}.${item.line}`,
+                    `${item.longitude.toFixed(3)}°`].forEach(value => tr.append(node("td", value)));
+                tbody.append(tr);
+            }
+        }
+        const channels = data.channels.map(channel => channel.gates.join("–") +
+            (typeof channel.name === "string" ? ` ${channel.name}` : "")).join(", ") || "keine";
+        const centers = (data.centers || []).map(center => center.label).join(", ") || "keine";
+        target.replaceChildren(table, node("p", `Kanäle: ${channels}`), node("p", `Definierte Zentren: ${centers}`));
+    }
+    async function loadNatal() {
+        const request = ++natal.request;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 90000);
+        natalToggle.setAttribute("aria-busy", "true");
+        setNatalStatus("Geburtsaktivierungen werden geladen bzw. einmalig berechnet …");
+        try {
+            const url = natalToggle.dataset?.url || "/profiles/current/overlay";
+            const result = await responseJSON(await fetch(url, {signal: controller.signal}));
+            if (request !== natal.request || !natal.enabled) return;
+            if (!result.profile) throw new Error(result.detail || "Kein aktuelles Geburtsprofil ausgewählt.");
+            const expected = natalToggle.dataset?.profileId;
+            if (expected && result.profile.id !== expected) {
+                throw new Error("Das aktuelle Profil wurde inzwischen gewechselt. Bitte die Seite neu laden.");
+            }
+            if (!validOverlay(result)) throw new Error("Die Geburtsaktivierungen sind unvollständig.");
+            natal.data = result;
+            setNatalStatus(natalSummary());
+            renderNatalTable();
+        } catch (error) {
+            if (request !== natal.request) return;
+            natal.enabled = false;
+            natalToggle.checked = false;
+            setNatalStatus(`Overlay nicht verfügbar: ${error.name === "AbortError" ?
+                "Zeitüberschreitung beim Berechnungsdienst." : error.message} Zum erneuten Versuch wieder einschalten.`, true);
+        } finally {
+            clearTimeout(timeout);
+            if (request === natal.request) natalToggle.setAttribute("aria-busy", "false");
+            scheduleRender();
+        }
+    }
+    natalToggle?.addEventListener("change", () => {
+        natal.enabled = Boolean(natalToggle.checked);
+        if (!natal.enabled) {
+            natal.request++;
+            natalToggle.setAttribute("aria-busy", "false");
+            setNatalStatus(natal.data ? "Overlay aus. Erneutes Einschalten verwendet die geladenen Daten." : "Overlay aus.");
+        } else if (natal.data) {
+            setNatalStatus(natalSummary());
+        } else {
+            loadNatal();
+        }
+        scheduleRender();
+    });
     function syncControls() {
         form.elements.start.value = localValue(view.start);
         form.elements.end.value = localValue(view.end);
@@ -256,7 +366,8 @@
         const svg = document.createElementNS(ns, "svg");
         svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
         svg.setAttribute("role", "img");
-        svg.setAttribute("aria-label", `Gate-Verlauf, ${dateLabel(view.start)} bis ${dateLabel(view.end)} UTC. Einzelwerte in der Tabelle.`);
+        const overlayLabel = natal.enabled && natal.data ? ` Overlay: feste Geburtsaktivierungen von ${natal.data.profile.name}, siehe Overlay-Tabelle.` : "";
+        svg.setAttribute("aria-label", `Gate-Verlauf, ${dateLabel(view.start)} bis ${dateLabel(view.end)} UTC. Einzelwerte in der Tabelle.${overlayLabel}`);
         const draw = (tag, attrs, text) => {
             const el = document.createElementNS(ns, tag);
             for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, value);
@@ -270,10 +381,32 @@
             .sort((a, b) => Date.parse(a) - Date.parse(b));
         const x = t => left + (Date.parse(t) - view.start) / (view.end - view.start) * (right - left);
         const y = gate => bottom - order.indexOf(gate) / 63 * (bottom - top);
+        const bands = natal.enabled && natal.data ? natalBands(natal.data) : new Map();
+        const row = (bottom - top) / 63;
+        for (const [gate, band] of bands) {
+            if (!order.includes(gate)) continue;
+            const yy = y(gate);
+            for (const source of NATAL_SOURCES) {
+                if (!band[source].length) continue;
+                const personality = source === "personality";
+                const color = personality ? "#e3eaf3" : "#ff6b6b";
+                const edge = personality ? yy - row / 2 : yy + row / 2;
+                const rect = draw("rect", {x: left, y: personality ? yy - row / 2 : yy, width: right - left,
+                    height: row / 2, fill: color, "fill-opacity": .2, "data-natal-gate": gate, "data-natal-source": source});
+                draw("line", {x1: left, y1: edge, x2: right, y2: edge, stroke: color, "stroke-width": 1,
+                    "stroke-dasharray": personality ? "" : "4 3", opacity: .8});
+                const title = document.createElementNS(ns, "title");
+                title.textContent = `${natal.data.profile.name} · ${sourceLabels[source]} (fest, Geburt): Gate ${gate} – ` +
+                    band[source].map(item => `${bodyNames.get(item.body) || item.body} ${item.gate}.${item.line}`).join(", ");
+                rect.append(title);
+            }
+        }
         for (const [index, gate] of order.entries()) {
             const yy = y(gate);
             draw("line", {x1: left, y1: yy, x2: right, y2: yy, stroke: index % 8 === 0 ? "#52627a" : "#2b384b", "stroke-width": .6});
-            draw("text", {x: left - 10, y: yy, fill: "#e3eaf3", "text-anchor": "end", "dominant-baseline": "middle", "font-size": 10}, gate);
+            const marked = bands.has(gate);
+            draw("text", {x: left - 10, y: yy, fill: marked ? "#ffdf9c" : "#e3eaf3", "text-anchor": "end", "dominant-baseline": "middle",
+                "font-size": 10, "font-weight": marked ? 700 : 400}, gate);
         }
         const ticks = Math.max(2, Math.floor(width / 190));
         const tickSteps = [60000, 300000, 900000, 3600000, 21600000, 43200000, 86400000, 604800000, 2592000000, 31536000000];
@@ -458,6 +591,7 @@
     if (typeof ResizeObserver !== "undefined") new ResizeObserver(scheduleRender).observe(chart);
     window.addEventListener("pagehide", () => {
         generation++;
+        natal.request++;
         queue = [];
         clearTimeout(debounce);
         planAbort?.abort();

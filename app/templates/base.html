@@ -16,6 +16,8 @@
     <a href="/profiles" {% if request.url.path.startswith("/profiles") %}aria-current="page"{% endif %}>Geburtsprofile</a>
     <a href="/profiles/new">Profil anlegen</a>
     <a href="/settings" {% if request.url.path == "/settings" %}aria-current="page"{% endif %}>Settings</a>
+    <a href="/gates" {% if request.url.path == "/gates" %}aria-current="page"{% endif %}>Tore</a>
+    <a href="/channels" {% if request.url.path == "/channels" %}aria-current="page"{% endif %}>Kanäle</a>
     <a href="/experiments/ephemeris" {% if request.url.path == "/experiments/ephemeris" %}aria-current="page"{% endif %}>Ephemeriden</a>
     <a href="/experiments/series" {% if request.url.path == "/experiments/series" %}aria-current="page"{% endif %}>Zeitreihe</a>
   </nav>

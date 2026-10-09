@@ -1,7 +1,7 @@
 "use strict";
 const assert = require("node:assert/strict");
-const {clampViewport, zoomViewport, panViewport, adjacentSegments, prioritized, MIN_TIME, MAX_TIME, MIN_SPAN} =
-    require("../app/static/gate-timeline.js");
+const {clampViewport, zoomViewport, panViewport, adjacentSegments, prioritized, validOverlay, natalBands,
+    MIN_TIME, MAX_TIME, MIN_SPAN} = require("../app/static/gate-timeline.js");
 
 const view = {start: Date.UTC(2026, 9, 8), end: Date.UTC(2026, 9, 9)};
 const span = view.end - view.start;
@@ -30,6 +30,20 @@ const priority = prioritized(sequence);
 assert.deepEqual(priority.slice(0, 3), ["t0", "t63", "t31"]);
 assert.equal(new Set(priority).size, 64);
 assert.deepEqual([...priority].sort(), [...sequence].sort());
+const overlay = {
+    profile: {id: "p1", name: "Anna", birth_utc: "1990-07-15T12:30:00+00:00"},
+    personality: [{body: "Sun", gate: 64, line: 2, longitude: 10.5}, {body: "Earth", gate: 47, line: 2, longitude: 190.5}],
+    design: [{body: "Sun", gate: 34, line: 5, longitude: 100}, {body: "Earth", gate: 64, line: 6, longitude: 280}],
+    channels: [{gates: [64, 47], centers: ["Head", "Ajna"]}], centers: [{id: "Head", label: "Kopf"}]
+};
+assert(validOverlay(overlay));
+assert(!validOverlay({...overlay, design: []}), "Both sources are required");
+assert(!validOverlay({...overlay, personality: [{body: "Sun", gate: 65, line: 1, longitude: 1}]}));
+assert(!validOverlay({profile: null}));
+const bands = natalBands(overlay);
+assert.deepEqual([...bands.keys()].sort((a, b) => a - b), [34, 47, 64]);
+assert.deepEqual(bands.get(64).personality.map(p => p.body), ["Sun"]);
+assert.deepEqual(bands.get(64).design.map(p => p.body), ["Earth"], "Sources stay separate per gate");
 console.log("Gate timeline: viewport, bounds, cyclic paths and progressive sampling passed.");
 
 // Exercise the actual browser controller with a minimal DOM, controlled fetches and no framework.
@@ -38,6 +52,7 @@ const vm = require("node:vm");
 const path = require("node:path");
 class Element {
     constructor(tag = "div") {
+        this.dataset = {};
         this.tag = tag;
         this.listeners = new Map();
         this.children = [];
@@ -182,4 +197,149 @@ async function browserControllerTests() {
     assert.equal(get("timeline-retry").hidden, true);
     console.log("Gate timeline browser controller: bounded fetches, stale results, selection, validation, busy retry and errors passed.");
 }
-browserControllerTests().catch(error => {console.error(error); process.exitCode = 1;});
+
+async function overlayControllerTests() {
+    const ids = new Map();
+    const get = id => {
+        if (!ids.has(id)) ids.set(id, new Element());
+        return ids.get(id);
+    };
+    const form = get("timeline-range");
+    form.elements = {start: new Element("input"), end: new Element("input"), samples: new Element("select")};
+    form.elements.samples.value = "64";
+    const details = new Element("details");
+    details.append(get("timeline-table"));
+    const natalDetails = new Element("details");
+    natalDetails.append(get("timeline-natal-table"));
+    const toggle = get("timeline-natal");
+    toggle.dataset = {url: "/profiles/current/overlay", profileId: "p1"};
+    const raf = [], overlays = [];
+    const counts = {plan: 0, frame: 0, overlay: 0};
+    const response = (payload, status = 200) => ({
+        ok: status === 200, status, headers: {get: () => "application/json"}, json: async () => payload
+    });
+    const fetch = async url => {
+        const parsed = new URL(url, "http://localhost");
+        if (parsed.pathname === "/experiments/timeline") {
+            counts.plan++;
+            const start = parsed.searchParams.get("start"), end = parsed.searchParams.get("end");
+            return response({start, end, timestamps: [start, end], gate_order: order, step_seconds: 3600});
+        }
+        if (parsed.pathname === "/experiments/frame") {
+            counts.frame++;
+            return response({timestamp_utc: parsed.searchParams.get("timestamp"),
+                positions: [{body: "Sun", gate: 12, line: 3, longitude: 19.2}]});
+        }
+        assert.equal(parsed.pathname, "/profiles/current/overlay");
+        counts.overlay++;
+        return new Promise(resolve => overlays.push((payload, status = 200) => resolve(response(payload, status))));
+    };
+    const sandbox = {
+        document: {getElementById: get, createElement: tag => new Element(tag), createElementNS: (_, tag) => new Element(tag)},
+        window: {addEventListener() {}}, fetch, URLSearchParams, Intl, Date, AbortController,
+        setTimeout: (fn, ms) => setTimeout(fn, ms === 250 ? 5 : ms),
+        clearTimeout, requestAnimationFrame: fn => {raf.push(fn);}, console
+    };
+    const flushRender = () => {while (raf.length) raf.shift()();};
+    const tick = () => new Promise(resolve => setTimeout(resolve, 15));
+    const svgNodes = () => get("timeline-chart").children[0].children;
+    const natalRects = () => svgNodes().filter(el => el.tag === "rect" && el.attributes["data-natal-source"]);
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../app/static/gate-timeline.js"), "utf8"), sandbox);
+    await tick();
+    flushRender();
+    assert.equal(counts.overlay, 0, "Overlay is lazy: nothing is fetched on page load");
+    assert.equal(natalRects().length, 0);
+    const before = {...counts};
+    toggle.checked = true;
+    toggle.fire("change");
+    assert.equal(counts.overlay, 1);
+    assert.equal(toggle.attributes["aria-busy"], "true");
+    assert.match(get("timeline-natal-status").textContent, /geladen/);
+    // Unselecting before the response arrives must discard the stale result.
+    toggle.checked = false;
+    toggle.fire("change");
+    overlays.shift()(overlay);
+    await tick();
+    flushRender();
+    assert.equal(natalRects().length, 0, "Stale overlay response must not render");
+    assert.match(get("timeline-natal-status").textContent, /Overlay aus/);
+    toggle.checked = true;
+    toggle.fire("change");
+    assert.equal(counts.overlay, 2);
+    overlays.shift()(overlay);
+    await tick();
+    flushRender();
+    assert.equal(counts.plan, before.plan, "Overlay does not replan transit sampling");
+    assert.equal(counts.frame, before.frame, "Overlay does not fetch transit frames");
+    const sources = natalRects().map(el => `${el.attributes["data-natal-gate"]}:${el.attributes["data-natal-source"]}`).sort();
+    assert.deepEqual(sources, ["34:design", "47:personality", "64:design", "64:personality"]);
+    const rows = new Set(natalRects().map(el => el.attributes.width));
+    assert.equal(rows.size, 1, "Bands span the full time range: no temporal movement");
+    assert.match(get("timeline-natal-status").textContent, /Overlay aktiv: Anna · 3 Tore, 1 Kanäle/);
+    assert.equal(get("timeline-natal-status").attributes.role, "status");
+    assert.equal(get("timeline-natal-table").children[0].children[2].children.length, 4, "Accessible natal table");
+    assert.match(get("timeline-natal-table").children[1].textContent, /64–47/);
+    assert.match(get("timeline-chart").children[0].attributes["aria-label"], /Geburtsaktivierungen von Anna/);
+    get("timeline-forward").fire("click");
+    await tick();
+    await tick();
+    flushRender();
+    assert.equal(counts.overlay, 2, "Navigation never recomputes the natal overlay");
+    assert(counts.plan > before.plan);
+    assert.equal(natalRects().length, 4, "Overlay persists across navigation");
+    toggle.checked = false;
+    toggle.fire("change");
+    flushRender();
+    assert.equal(natalRects().length, 0);
+    toggle.checked = true;
+    toggle.fire("change");
+    flushRender();
+    assert.equal(counts.overlay, 2, "Re-enabling reuses loaded data");
+    assert.equal(natalRects().length, 4);
+    console.log("Gate timeline overlay: lazy load, stale discard, bands, table and navigation independence passed.");
+}
+
+async function overlayErrorTests() {
+    const ids = new Map();
+    const get = id => {
+        if (!ids.has(id)) ids.set(id, new Element());
+        return ids.get(id);
+    };
+    const form = get("timeline-range");
+    form.elements = {start: new Element("input"), end: new Element("input"), samples: new Element("select")};
+    new Element("details").append(get("timeline-table"));
+    const toggle = get("timeline-natal");
+    toggle.dataset = {url: "/profiles/current/overlay", profileId: "p1"};
+    const replies = [
+        [{detail: "Der Berechnungsdienst ist nicht erreichbar."}, 502],
+        [{...{profile: {id: "other", name: "Bert"}}, personality: [], design: [], channels: []}, 200],
+        [{profile: null, detail: "Kein aktuelles Geburtsprofil ausgewählt."}, 200],
+    ];
+    const fetch = async url => {
+        const parsed = new URL(url, "http://localhost");
+        if (parsed.pathname !== "/profiles/current/overlay") return new Promise(() => {});
+        const [payload, status] = replies.shift();
+        return {ok: status === 200, status, headers: {get: () => "application/json"}, json: async () => payload};
+    };
+    const sandbox = {
+        document: {getElementById: get, createElement: tag => new Element(tag), createElementNS: (_, tag) => new Element(tag)},
+        window: {addEventListener() {}}, fetch, URLSearchParams, Intl, Date, AbortController,
+        setTimeout, clearTimeout, requestAnimationFrame: () => {}, console
+    };
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../app/static/gate-timeline.js"), "utf8"), sandbox);
+    for (const expected of [/nicht erreichbar/, /inzwischen gewechselt/, /Kein aktuelles Geburtsprofil/]) {
+        toggle.checked = true;
+        toggle.fire("change");
+        await new Promise(resolve => setTimeout(resolve, 10));
+        assert.match(get("timeline-natal-status").textContent, expected);
+        assert.equal(get("timeline-natal-status").attributes.role, "alert");
+        assert.equal(toggle.checked, false, "Failed overlay is switched off so it can be retried");
+        assert.equal(toggle.attributes["aria-busy"], "false");
+    }
+    console.log("Gate timeline overlay: API failure, changed profile and missing profile passed.");
+}
+
+browserControllerTests()
+    .then(overlayControllerTests)
+    .then(overlayErrorTests)
+    .catch(error => {console.error(error); process.exitCode = 1;});

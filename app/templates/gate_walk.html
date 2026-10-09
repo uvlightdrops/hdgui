@@ -4,8 +4,10 @@
 <section id="gate-walk" data-order="{{ gate_order | tojson | forceescape }}">
   <h1>Gate-Wanderung</h1>
   <p>Tierkreis-Reihenfolge von Gate 41 bis 60 und zurück zu 41. Die Spur bleibt bis zum Zurücksetzen sichtbar. Dies sind keine HD-Kanäle oder Planetenbewegungen.</p>
-  <div class="experiment-controls">
+  <div class="gate-walk-layout">
+  <div class="gate-walk-controls" role="group" aria-label="Animations- und Ansichtssteuerung">
     <button id="walk-play" type="button" aria-pressed="false">Abspielen</button>
+    <button id="walk-stop" type="button">Stop</button>
     <button id="walk-reset" type="button">Zurücksetzen</button>
     <label>Geschwindigkeit <output id="walk-speed-value">1 Tor/s</output>
       <input id="walk-speed" type="range" min="0.25" max="4" step="0.25" value="1">
@@ -17,12 +19,18 @@
     </label>
     <button id="walk-zoom-in" type="button" aria-label="Hineinzoomen">+</button>
     <button id="walk-fit" type="button">Ansicht zurücksetzen</button>
+  <p id="walk-zoom-help">Beide Ansichten gemeinsam: Mausrad zum Zoomen, Ziehen zum Verschieben · Tastatur: +/−, Pfeiltasten, Pos1.</p>
   </div>
-  <p id="walk-zoom-help">Mausrad: zoomen · Ziehen: Ansicht verschieben · Tastatur: +/−, Pfeiltasten, Pos1.</p>
-  <div class="gate-walk-layout">
     <div class="gate-walk-graph" tabindex="0" role="group" aria-label="Zoombarer BodyGraph" aria-describedby="walk-zoom-help">{{ graph | safe }}</div>
-    <div class="gate-walk-zodiac">{{ zodiac | safe }}</div>
+    <div class="gate-walk-zodiac" tabindex="0" role="group" aria-label="Zoombarer Tierkreis, synchron mit dem BodyGraph" aria-describedby="walk-zoom-help">{{ zodiac | safe }}</div>
   </div>
+  <aside class="walk-description" aria-label="Beschreibung des aktuellen Tors">
+    <h2 id="walk-gate-name"></h2>
+    <p id="walk-gate-description"></p>
+    <p id="walk-gate-channel"></p>
+    <a id="walk-gate-link" href="/gates#gate-41">Tor nachschlagen</a>
+  </aside>
+  <script id="walk-descriptions" type="application/json">{{ descriptions | tojson }}</script>
 </section>
 <script src="/static/gate-walk.js" defer></script>
 {% endblock %}

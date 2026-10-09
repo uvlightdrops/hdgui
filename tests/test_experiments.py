@@ -1,10 +1,15 @@
 import unittest
+import os
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from threading import Event
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
+from alembic import command
+from alembic.config import Config
 
 from app.api_client import ChartServiceError
 from app.config import Settings
@@ -15,8 +20,12 @@ from app.transit import GATES, TransitFrame, TransitPosition
 
 class ExperimentTests(unittest.TestCase):
     def test_gate_walk_needs_no_api(self):
-        with TestClient(create_app(Settings(database_url="sqlite://"), self.client)) as web:
-            response = web.get("/experiments/gate-walk")
+        with tempfile.TemporaryDirectory() as directory:
+            url = f"sqlite:///{Path(directory) / 'walk.db'}"
+            with patch.dict(os.environ, {"HDGUI_DATABASE_URL": url}):
+                command.upgrade(Config("alembic.ini"), "head")
+            with TestClient(create_app(Settings(database_url=url), self.client)) as web:
+                response = web.get("/experiments/gate-walk")
         self.assertEqual(response.status_code, 200)
         self.assertIn('id="gate-walk-trail"', response.text)
         self.assertIn("/static/gate-walk.js", response.text)

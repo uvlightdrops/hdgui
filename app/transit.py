@@ -3,6 +3,7 @@ from datetime import datetime
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from app.gate_descriptions import gate_tooltip
 
 
 class TransitPosition(BaseModel):
@@ -41,21 +42,22 @@ def point(angle: float, radius: float) -> tuple[float, float]:
     return 400 + radius * math.cos(radians), 400 + radius * math.sin(radians)
 
 
-def render_wheel(frame: TransitFrame) -> str:
+def render_wheel(frame: TransitFrame, descriptions=None) -> str:
     root = Element("svg", {
         "xmlns": "http://www.w3.org/2000/svg", "viewBox": "0 0 800 800",
-        "role": "img", "aria-labelledby": "wheel-title",
+        "role": "img", "aria-label": "Tierkreis mit 64 Gates und aktuellen Planetenpositionen",
     })
-    SubElement(root, "title", {"id": "wheel-title"}).text = "Aktueller Transit mit Tierkreis und 64 Gates"
     for radius in (220, 290, 330, 380):
         SubElement(root, "circle", {"cx": "400", "cy": "400", "r": str(radius),
                                   "fill": "none", "stroke": "#60758e"})
 
     def text(angle, radius, value, size="12", color="#e3eaf3"):
         x, y = point(angle, radius)
-        SubElement(root, "text", {"x": str(x), "y": str(y), "fill": color,
+        label = SubElement(root, "text", {"x": str(x), "y": str(y), "fill": color,
                                  "font-size": size, "text-anchor": "middle",
-                                 "dominant-baseline": "middle"}).text = value
+                                 "dominant-baseline": "middle"})
+        label.text = value
+        return label
 
     def line(angle, inner, outer):
         x1, y1 = point(angle, inner)
@@ -70,8 +72,9 @@ def render_wheel(frame: TransitFrame) -> str:
     for index, gate in enumerate(GATES):
         angle = 302 + index * 360 / 64
         line(angle, 290, 330)
-        text(angle + 360 / 128, 310, str(gate),
-             color="#85dacc" if gate in active else "#e3eaf3")
+        label = text(angle + 360 / 128, 310, str(gate),
+                     color="#85dacc" if gate in active else "#e3eaf3")
+        SubElement(label, "title").text = gate_tooltip(gate, descriptions)
     for index, position in enumerate(frame.positions):
         # Separate label tracks keep close planetary positions readable.
         radius = 130 + (index % 5) * 30

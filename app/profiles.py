@@ -49,3 +49,11 @@ def chart_key(birth_utc: datetime, api_url: str, engine_version: str) -> str:
         [birth_utc.replace(tzinfo=UTC).isoformat(), api_url.rstrip("/"), engine_version, "svg-v1"]
     )
     return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def activation_key(birth_utc: datetime, api_url: str, engine_version: str) -> str:
+    payload = json.dumps(
+        [birth_utc.replace(tzinfo=UTC).isoformat(), api_url.rstrip("/"), engine_version,
+         "activations-v1"]
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()
