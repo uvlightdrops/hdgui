@@ -37,6 +37,7 @@ The WebUI does not implement a second astronomical ephemeris or the engine's des
 | `transit.py`, `bodygraph.py`, `profile_svg.py` | Normalized positions, wheel/BodyGraph rendering and saved-profile SVG presentation |
 | `transit_service.py`, `gate_forecast.py` | Current snapshot/render cache and background future gate-change search |
 | `experiments.py`, `static/gate-timeline.js` | Sample planning/cache, progressive timeline data and navigation |
+| `center_timeline.py`, `static/center-timeline.js` | Combined natal/transit center definition, selectable timestamp BodyGraph and stacked center tracks |
 | `catalog_fixture.py`, `gate_descriptions.py` | Explicit complete-fixture validation/import and database-backed wording |
 
 The app factory can accept a replacement client, which supports testing and a future provider boundary. Today this is a concrete client/adapter pattern, **not** a complete provider protocol, plugin registry or interchangeable engine framework.
@@ -67,14 +68,24 @@ Catalog pages expose gates, harmonic partners, channels and circuit relations. T
 | `/experiments/gate-plot` | Sampled, zoomable gate timeline with optional fixed natal bands |
 | `/experiments/timeline` | Validate window and return a sample plan, without calculation |
 | `/experiments/frame` | Fetch/cache one actual timestamp, all returned bodies |
+| `/centers` | Current personal BodyGraph with a selected transit and nine independently selectable center tracks |
+| `/centers/frame` | Validate current profile, combine natal and transit gates, derive canonical channels/centers; optionally render a local SVG |
 | `/experiments/ephemeris`, `/experiments/series` | Explicitly loaded UTC position/series tables |
 | `/experiments/gate-walk` | API-independent geometric zodiac-order learning animation |
+
+The transit zodiac's 64 gate sectors use the same center-based palette and `.65` fill opacity as the gate-walk zodiac after a complete round. All sectors are colored, not only currently active gates; active gate numbers retain their separate transit highlight.
 
 For transits, the adapter uses only `/calculate` → `gates.prs.Planets`; the engine's design positions are not current transits. Natal calculations use both `gates.prs.Planets` and `gates.des.Planets`, require nonempty valid lists with unique matching body sets, and never save invalid responses as empty activations.
 
 Profile SVG is XML-parsed and served as an image or a document with restrictive Content Security Policy, not inserted as untrusted page HTML. CSRF checks protect mutation forms. These measures do not establish an authenticated security boundary.
 
 Timeline natal overlays are fixed personality/design bands, with textual/tabular alternatives. They do not claim that natal positions move. One successful overlay load is reused within the page; disabled/stale responses are discarded. Profile selection in another tab takes effect after a page reload.
+
+The **center timeline** is a separate combined view, not a change to the transit-only home graph. It unions natal personality/design gates with each sampled transit's gates, then uses `natal.derive` and database topology to find complete channels and their defined centers. One hanging gate never defines a center. Natal-defined centers remain defined throughout; transit-only channels and mixed natal/transit channels also count. SVG channel halves distinguish personality (black), design (red) and transit (blue); gold centers reflect the combined definition.
+
+The view reuses the existing adaptive sample plan (up to 160 points) and shares `SampleCache` with the experiment routes. Tracks hold the left sample's state until the next sample, only when both neighboring samples are available. Unloaded intervals remain hatched; short transitions may be missed. Hiding a track does not alter the graph or trigger calculations. The time slider and track clicks request an actual calculation at the selected UTC second rather than silently snapping the graph to a sample. Its keyboard-accessible slider and status text provide alternatives to pointing at colored bars. The graph sits left of the tracks, with controls below both; no sample table is rendered.
+
+Center frame requests require the page's current profile ID, check selection/birth time again after calculation and return JSON errors. The browser rejects changed profile/engine/API calculation identities, discards canceled responses and clears stale profile output. Busy sample responses are retried at bounded intervals; other failures stop loading with an explicit retry instruction. Persistent transit samples require migration `0005`; no text-catalog import is required.
 
 ## Cache and concurrency model
 
@@ -83,13 +94,17 @@ Timeline natal overlays are fixed personality/design bands, with textual/tabular
 | Current transit | In-process frame + rendered wheel; TTL 60/300/600/1800/3600 seconds from calculation start; lock serializes refresh |
 | Transit BodyGraph | Rendered from the same frame, no second engine call; catalog text changes trigger rerendering |
 | Gate forecast | In-process background search/results shared by viewers; reusable until the predicted transition is reached; error retries may restart after 60 seconds |
-| Experiment samples | Up to 512 UTC timestamps for one hour per process, shared across timeline/ephemeris/series |
+| Transit samples | RAM: 512 UTC seconds for one hour; database: 20,000 samples across API/engine/format namespaces, oldest-inserted eviction, no time expiry; shared by timelines/ephemerides/series and gate-change searches |
+| Personal transit SVGs | 64 RAM entries per app, keyed by transit, birth inputs, engine version, combined centers and catalog snapshot |
+| Browser center timeline | 512 samples for one hour across window changes; profile/API/engine identity checked through a fresh first sample; selected-time graphs still validate on the server |
 | Browser timeline | Up to 512 samples for one hour; at most one point request in flight per browser |
 | Profile SVG and natal rows | Persistent, separate keys based on UTC birth instant, API URL and configured engine version |
 
+`SampleCache` checks the RAM front cache, then validated JSON in `transit_samples`, then the calculation service. Successful responses must match the requested UTC second and are committed before entering RAM. Namespace hashes include the normalized API URL, configured engine version and `transit-sample-v1`, never the bearer token. Database/cache corruption errors become explicit `ChartServiceError` responses. An in-process compute lock prevents duplicate loads; a concurrent cross-process insert is accepted only when the existing stored row validates. Gate forecasts use the same cache through its calculation-client `transit` interface. Lightweight canonical channel derivation is still performed per request so topology/names remain current.
+
 Expired current transits refresh on the next request; autoreload is page reload at the chosen interval, not continuous motion. Failed refreshes show an error instead of silently presenting an old snapshot as current. Catalog wording is reread and cached graphics can be rerendered without new position calculations.
 
-Experiment sampling allows one new calculation at a time within its own cache. A busy uncached `/frame` request returns 503 with `Retry-After`; cached points remain available. This is **not** a global lock covering forecast/current/natal requests, so those separate services can still load the upstream engine concurrently.
+Sampling and forecast searches allow one new sample load at a time within their shared cache. A busy `/frame` request without a RAM hit returns 503 with `Retry-After`; RAM-cached points remain available. This is **not** a global lock covering current-snapshot or natal requests, so those separate services can still load the upstream engine concurrently.
 
 Timeline changes are debounced by 250 ms. New windows load boundaries/midpoint before progressively filling gaps. Obsolete queued requests are discarded; an in-flight request is allowed to finish but its obsolete response is not applied. Failed sampling stops further point loads until retry.
 

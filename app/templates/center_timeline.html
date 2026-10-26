@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<section id="center-timeline" aria-label="Persönlicher Zentren-Verlauf" data-profile-id="{{ current_profile.id if current_profile and not current_profile.error else '' }}" data-centers="{{ centers | tojson | forceescape }}">
+  {% if current_profile and not current_profile.error %}
+  <div class="center-layout">
+  <div class="center-bodygraph-panel">
+  <div id="center-graph" class="transit-bodygraph center-graph" aria-live="polite"><p>BodyGraph wird geladen …</p></div>
+  <p id="center-graph-status" role="status" aria-live="polite"></p>
+  </div>
+  <div class="center-timeline-panel">
+  <div id="center-tracks" aria-label="Zentrum-Spuren"></div>
+  </div>
+  </div>
+  <div class="center-controls">
+  <form id="center-range" class="timeline-panel timeline-range">
+    <label>Von (UTC)<input name="start" type="datetime-local" value="{{ start }}" min="1900-01-01T00:00" max="2099-12-31T23:59" required></label>
+    <label>Bis (UTC)<input name="end" type="datetime-local" min="1900-01-01T00:00" max="2099-12-31T23:59" required></label>
+    <label>Detailgrad<select name="samples"><option value="32">Schnell · bis 32 Punkte</option><option value="64" selected>Standard · bis 64 Punkte</option><option value="160">Fein · bis 160 Punkte</option></select></label>
+    <button>Zeitraum laden</button>
+  </form>
+  <div class="timeline-actions">
+    <button type="button" data-shift="-1">Zurück</button>
+    <button type="button" data-days="1">1 Tag</button>
+    <button type="button" data-days="7">1 Woche</button>
+    <button type="button" data-days="30">1 Monat</button>
+    <button type="button" data-shift="1">Vorwärts</button>
+  </div>
+  <fieldset class="timeline-panel">
+    <legend>Zentrum-Spuren einblenden</legend>
+    <div class="timeline-body-list">
+      {% for center in centers %}
+      <label><input type="checkbox" data-center="{{ center.id }}" checked>{{ center.label }}</label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <label>Zeitpunkt auswählen (UTC)<input id="center-cursor" type="range" min="0" max="1000" value="0" disabled><output id="center-time"></output></label>
+  <progress id="center-progress" value="0" max="1" aria-label="Berechnete Zeitpunkte"></progress>
+  <p id="center-status" role="status" aria-live="polite"></p>
+  <p class="timeline-muted"><a href="/knowledge#center-timeline">Legende &amp; Hinweise zur Abtastung</a></p>
+  </div>
+  {% else %}
+  <p role="alert">{% if current_profile and current_profile.error %}{{ current_profile.error }}{% else %}Kein aktuelles Geburtsprofil ausgewählt. Unter <a href="/profiles">Geburtsprofile</a> ein Profil „Als aktuell setzen“.{% endif %}</p>
+  {% endif %}
+  <noscript><p role="alert">Für den Zentren-Verlauf bitte JavaScript aktivieren.</p></noscript>
+</section>
+<script src="/static/center-timeline.js" defer></script>
+{% endblock %}

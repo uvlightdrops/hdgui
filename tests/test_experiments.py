@@ -5,20 +5,132 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from threading import Event
 from pathlib import Path
+from dataclasses import replace
 from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
 from alembic import command
 from alembic.config import Config
+from sqlalchemy import func, select
 
 from app.api_client import ChartServiceError
 from app.config import Settings
+from app.database import make_database
+from app.models import TransitSample
 from app.experiments import SampleBusy, SampleCache, timeline_plan, zodiac_position
 from app.main import create_app
 from app.transit import GATES, TransitFrame, TransitPosition
 
 
 class ExperimentTests(unittest.TestCase):
+    def test_persistent_samples_survive_restart_and_ram_expiry(self):
+        engine, sessions = make_database(self.settings.database_url)
+        self.addCleanup(engine.dispose)
+        timestamp = datetime(2026, 10, 8, tzinfo=UTC)
+        cache = SampleCache(self.client, sessions, self.settings)
+        with patch("app.experiments.monotonic", return_value=0):
+            expected = cache.sample(timestamp)
+        with patch("app.experiments.monotonic", return_value=7200):
+            self.assertEqual(cache.sample(timestamp), expected)
+        restarted = SampleCache(self.client, sessions, self.settings)
+        self.assertEqual(restarted.transit(timestamp), expected)
+        self.assertEqual(self.client.transit.call_count, 1)
+        with sessions() as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(TransitSample)), 1)
+
+    def test_persistent_cache_is_namespaced_by_api_and_engine(self):
+        engine, sessions = make_database(self.settings.database_url)
+        self.addCleanup(engine.dispose)
+        timestamp = datetime(2026, 10, 8, tzinfo=UTC)
+        for settings in (
+            self.settings,
+            replace(self.settings, engine_version="new-engine"),
+            replace(self.settings, api_url="http://localhost:9999"),
+        ):
+            SampleCache(self.client, sessions, settings).sample(timestamp)
+        self.assertEqual(self.client.transit.call_count, 3)
+        SampleCache(self.client, sessions, replace(
+            self.settings, api_url=self.settings.api_url + "/", api_token="another-secret",
+        )).sample(timestamp)
+        self.assertEqual(self.client.transit.call_count, 3)
+
+    def test_persistent_cache_is_bounded_across_namespaces(self):
+        engine, sessions = make_database(self.settings.database_url)
+        self.addCleanup(engine.dispose)
+        timestamp = datetime(2026, 10, 8, tzinfo=UTC)
+        with patch("app.experiments.MAX_STORED_SAMPLES", 2):
+            for index in range(4):
+                SampleCache(self.client, sessions, replace(
+                    self.settings, engine_version=str(index),
+                )).sample(timestamp)
+        with sessions() as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(TransitSample)), 2)
+
+    def test_persistent_cache_errors_and_invalid_data_are_explicit(self):
+        engine, sessions = make_database(self.settings.database_url)
+        self.addCleanup(engine.dispose)
+        timestamp = datetime(2026, 10, 8, tzinfo=UTC)
+        cache = SampleCache(self.client, sessions, self.settings)
+        self.client.transit.side_effect = ChartServiceError("offline")
+        with self.assertRaisesRegex(ChartServiceError, "offline"):
+            cache.sample(timestamp)
+        with sessions() as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(TransitSample)), 0)
+        self.client.transit.side_effect = lambda value: TransitFrame(
+            timestamp_utc=value + timedelta(seconds=1),
+            positions=[TransitPosition(body="Sun", longitude=1, gate=1, line=1)],
+        )
+        with self.assertRaisesRegex(ChartServiceError, "abweichenden"):
+            cache.sample(timestamp)
+        with sessions.begin() as session:
+            session.add(TransitSample(
+                namespace=cache.namespace, timestamp_utc=timestamp.replace(tzinfo=None),
+                payload="invalid-json", created_at=datetime.now(UTC).replace(tzinfo=None),
+            ))
+        self.client.transit.reset_mock()
+        with self.assertRaisesRegex(ChartServiceError, "Ungültiger Transit-Cache"):
+            cache.sample(timestamp)
+        self.client.transit.assert_not_called()
+        with engine.begin() as connection:
+            connection.exec_driver_sql("DROP TABLE transit_samples")
+        with self.assertRaisesRegex(ChartServiceError, "Alembic-Migrationen"):
+            cache.sample(timestamp)
+
+    def test_app_restart_reuses_persistent_samples(self):
+        params = {"timestamp": "2026-10-08T12:00:00Z"}
+        for _ in range(2):
+            with TestClient(create_app(self.settings, self.client)) as web:
+                response = web.get("/experiments/frame", params=params)
+                self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(self.client.transit.call_count, 1)
+
+    def test_duplicate_process_insert_reuses_existing_valid_row(self):
+        engine, sessions = make_database(self.settings.database_url)
+        self.addCleanup(engine.dispose)
+        timestamp = datetime(2026, 10, 8, tzinfo=UTC)
+        first = SampleCache(self.client, sessions, self.settings)
+        second = SampleCache(self.client, sessions, self.settings)
+        frame = first.sample(timestamp)
+        second._store(frame)
+        self.assertEqual(second.sample(timestamp), frame)
+        self.assertEqual(self.client.transit.call_count, 1)
+        with sessions() as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(TransitSample)), 1)
+
+    def test_cache_migration_downgrade_preserves_existing_data(self):
+        engine, sessions = make_database(self.settings.database_url)
+        self.addCleanup(engine.dispose)
+        timestamp = datetime(2026, 10, 8, tzinfo=UTC)
+        SampleCache(self.client, sessions, self.settings).sample(timestamp)
+        with patch.dict(os.environ, {"HDGUI_DATABASE_URL": self.settings.database_url}):
+            command.downgrade(Config("alembic.ini"), "0004")
+            with engine.connect() as connection:
+                self.assertEqual(connection.exec_driver_sql("SELECT count(*) FROM gates").scalar(), 64)
+                self.assertEqual(connection.exec_driver_sql("SELECT count(*) FROM ui_settings").scalar(), 1)
+            command.upgrade(Config("alembic.ini"), "head")
+        with sessions() as session:
+            self.assertEqual(session.scalar(select(func.count()).select_from(TransitSample)), 0)
+
     def test_gate_walk_needs_no_api(self):
         with tempfile.TemporaryDirectory() as directory:
             url = f"sqlite:///{Path(directory) / 'walk.db'}"
@@ -32,6 +144,11 @@ class ExperimentTests(unittest.TestCase):
         self.client.transit.assert_not_called()
 
     def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.settings = Settings(database_url=f"sqlite:///{Path(directory.name) / 'experiments.db'}")
+        with patch.dict(os.environ, {"HDGUI_DATABASE_URL": self.settings.database_url}):
+            command.upgrade(Config("alembic.ini"), "head")
         self.client = Mock()
         self.client.transit.side_effect = lambda timestamp: TransitFrame(
             timestamp_utc=timestamp,
@@ -45,7 +162,7 @@ class ExperimentTests(unittest.TestCase):
         self.assertEqual(zodiac_position(359.9999), "00° Widder 00′")
 
     def test_pages_and_hourly_samples_share_cache(self):
-        with TestClient(create_app(Settings(database_url="sqlite://"), self.client)) as web:
+        with TestClient(create_app(self.settings, self.client)) as web:
             for page in ("ephemeris", "series", "gate-plot"):
                 response = web.get(f"/experiments/{page}")
                 self.assertEqual(response.status_code, 200)
@@ -65,7 +182,7 @@ class ExperimentTests(unittest.TestCase):
             self.assertEqual(daily.json()["step_hours"], 24)
 
     def test_validation_and_errors(self):
-        with TestClient(create_app(Settings(database_url="sqlite://"), self.client)) as web:
+        with TestClient(create_app(self.settings, self.client)) as web:
             for params in (
                 {"start": "2026-10-08T12:00", "days": 1},
                 {"start": "2026-10-08T12:00Z", "days": 365},
@@ -91,7 +208,7 @@ class ExperimentTests(unittest.TestCase):
         self.assertEqual(self.client.transit.call_count, 2)
 
     def test_plan_is_adaptive_bounded_and_never_calculates(self):
-        with TestClient(create_app(Settings(database_url="sqlite://"), self.client)) as web:
+        with TestClient(create_app(self.settings, self.client)) as web:
             for start, end, samples in (
                 ("2026-10-08T12:00:00Z", "2026-10-09T12:00:00Z", 64),
                 ("1900-01-01T00:00:00Z", "2099-12-31T23:59:59Z", 160),
@@ -117,7 +234,7 @@ class ExperimentTests(unittest.TestCase):
 
     def test_timeline_range_validation(self):
         valid = {"start": "2026-10-08T12:00:00Z", "end": "2026-10-09T12:00:00Z"}
-        with TestClient(create_app(Settings(database_url="sqlite://"), self.client)) as web:
+        with TestClient(create_app(self.settings, self.client)) as web:
             for change in (
                 {"start": "2026-10-08T12:00:00"},
                 {"end": "2026-10-09T12:00:00"},
@@ -143,7 +260,7 @@ class ExperimentTests(unittest.TestCase):
                        for index, body in enumerate(("Sun", "Moon", "Earth", "Mercury", "Venus", "Mars", "Jupiter",
                                                    "Saturn", "Uranus", "Neptune", "Pluto", "North_Node", "South_Node", "Extra"))],
         )
-        with TestClient(create_app(Settings(database_url="sqlite://"), self.client)) as web:
+        with TestClient(create_app(self.settings, self.client)) as web:
             response = web.get("/experiments/frame", params={"timestamp": "2026-10-08T14:00:00.123+02:00", "body": "Sun"})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(len(response.json()["positions"]), 14)
@@ -156,7 +273,7 @@ class ExperimentTests(unittest.TestCase):
 
     def test_frame_errors_are_not_cached(self):
         self.client.transit.side_effect = ChartServiceError("Dienst offline")
-        with TestClient(create_app(Settings(database_url="sqlite://"), self.client)) as web:
+        with TestClient(create_app(self.settings, self.client)) as web:
             for _ in range(2):
                 response = web.get("/experiments/frame", params={"timestamp": "2026-10-08T12:00:00Z"})
                 self.assertEqual(response.status_code, 502)
@@ -202,7 +319,7 @@ class ExperimentTests(unittest.TestCase):
             return original(value)
 
         self.client.transit.side_effect = slow
-        with TestClient(create_app(Settings(database_url="sqlite://"), self.client)) as web:
+        with TestClient(create_app(self.settings, self.client)) as web:
             with ThreadPoolExecutor(max_workers=1) as pool:
                 first = pool.submit(web.get, "/experiments/frame", params={"timestamp": "2026-10-08T12:00Z"})
                 try:

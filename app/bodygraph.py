@@ -160,15 +160,28 @@ def render_walk_zodiac(descriptions=None) -> str:
     return tostring(root, encoding="unicode")
 
 
-def render_bodygraph(frame: TransitFrame, descriptions=None) -> str:
-    active = {position.gate for position in frame.positions}
+def render_bodygraph(frame: TransitFrame, descriptions=None, *, natal=None, defined_centers=None) -> str:
+    sources = {}
+    if natal is not None:
+        for source in ("personality", "design"):
+            for position in natal[source]:
+                sources.setdefault(position["gate"], set()).add(source)
+    for position in frame.positions:
+        sources.setdefault(position.gate, set()).add("transit")
+    active = set(sources)
     complete = [pair for pair in CHANNELS if set(pair) <= active]
     gate_centers = {gate: name for name, (_, _, gates) in CENTERS.items() for gate in gates}
     defined = {gate_centers[gate] for pair in complete for gate in pair}
+    if defined_centers is not None:
+        defined = set(defined_centers)
+    colors = {"personality": "#202020", "design": "#c53443",
+              "transit": "#087eae" if natal is not None else "black"}
     layout = load_layout()
     root = Element("svg", {
         "xmlns": "http://www.w3.org/2000/svg", "viewBox": "0 0 240 320",
-        "role": "img", "aria-label": "BodyGraph des aktuellen Transits",
+        "role": "img", "aria-label": (
+            "Persönlicher BodyGraph mit Transit" if natal is not None else "BodyGraph des aktuellen Transits"
+        ),
     })
     SubElement(root, "path", {
         "d": layout["body_outline"], "fill": "#e6e6e6", "stroke": "black", "stroke-width": ".8",
@@ -182,15 +195,20 @@ def render_bodygraph(frame: TransitFrame, descriptions=None) -> str:
         })
         for gate in (first, second):
             if gate in active:
-                SubElement(group, "path", {
-                    "d": layout["channels"][str(gate)]["channel_path"],
-                    "fill": "none", "stroke": "black", "stroke-width": "4",
-                    "stroke-linecap": "round",
-                })
+                gate_sources = [source for source in colors if source in sources[gate]]
+                for index, source in enumerate(gate_sources):
+                    SubElement(group, "path", {
+                        "d": layout["channels"][str(gate)]["channel_path"],
+                        "fill": "none", "stroke": colors[source],
+                        "stroke-width": str(4 - index * 1.3),
+                        "stroke-linecap": "round", "data-source": source,
+                    })
     for name, data in layout["centers"].items():
         is_defined = ("Solar" if name == "SolarPlexus" else name) in defined
         attrs = {"fill": "#d4af37" if is_defined else "white",
-                 "stroke": "#b8860b" if is_defined else "gray", "stroke-width": "2"}
+                 "stroke": "#b8860b" if is_defined else "gray", "stroke-width": "2",
+                 "data-center": "Solar" if name == "SolarPlexus" else name,
+                 "data-defined": str(is_defined).lower()}
         draw_center(root, data, attrs)
     for gate in sorted(active):
         coords = layout["gates_coords"][str(gate)]

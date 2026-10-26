@@ -19,7 +19,8 @@ from app.api_client import ChartClient, ChartServiceError
 from app.config import Settings
 from app.database import make_database
 from app.gate_forecast import GateForecastService
-from app.experiments import experiment_router
+from app.experiments import SampleCache, experiment_router
+from app.center_timeline import center_timeline_router
 from app.gate_descriptions import CatalogMissing, gate_descriptions, gate_tooltip
 from app.models import BirthProfile, Channel, Circuit, Gate, UiSettings
 from app.natal import (
@@ -53,8 +54,9 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                 raise HTTPException(500, str(exc)) from exc
 
     client = chart_client or ChartClient(settings)
+    samples = SampleCache(client, sessions, settings)
     transit_cache = TransitCache(client, descriptions)
-    forecasts = GateForecastService(client)
+    forecasts = GateForecastService(samples)
     natal = NatalService(sessions, client, settings)
 
     @asynccontextmanager
@@ -80,7 +82,22 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
             # The overlay is optional; the transit timeline stays usable without profiles.
             return {"error": "Profil-Datenbank nicht verfügbar. Bitte Alembic-Migrationen ausführen."}
 
-    app.include_router(experiment_router(client, templates, current_profile, descriptions))
+    app.include_router(experiment_router(client, templates, current_profile, descriptions, samples))
+    app.include_router(center_timeline_router(
+        templates, current_profile, descriptions, natal, sessions, samples,
+    ))
+
+    @app.get("/knowledge")
+    def knowledge_page(request: Request):
+        return templates.TemplateResponse(
+            request=request, name="knowledge.html", context={},
+        )
+
+    @app.get("/knowledge/celestial-bodies")
+    def celestial_bodies_page(request: Request):
+        return templates.TemplateResponse(
+            request=request, name="celestial_bodies.html", context={},
+        )
 
     def catalog_context():
         with sessions() as session:

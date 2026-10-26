@@ -1,5 +1,6 @@
 """Start the calculation service (if needed) and the WebUI with Uvicorn's standard options."""
 import errno
+import os
 import socket
 import sys
 
@@ -7,6 +8,7 @@ import click
 from uvicorn.main import main as uvicorn_cli
 
 from app.backend import ensure_backend
+from app.token_store import load_saved_token
 
 APP_OPTIONS = [
     click.Option(
@@ -46,6 +48,7 @@ def _check_frontend_address(params) -> None:
 
 def _run(no_api, api_timeout, **uvicorn_params):
     _check_frontend_address(uvicorn_params)
+    load_saved_token(os.environ)
     if not no_api:
         ensure_backend(api_timeout)
     return click.get_current_context().invoke(uvicorn_cli.callback, **uvicorn_params)

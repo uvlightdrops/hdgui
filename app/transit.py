@@ -43,10 +43,30 @@ def point(angle: float, radius: float) -> tuple[float, float]:
 
 
 def render_wheel(frame: TransitFrame, descriptions=None) -> str:
+    # BodyGraph rendering also uses TransitFrame; import its shared palette at render time.
+    from app.bodygraph import CENTER_MARKERS, GATE_CENTERS
+
     root = Element("svg", {
         "xmlns": "http://www.w3.org/2000/svg", "viewBox": "0 0 800 800",
         "role": "img", "aria-label": "Tierkreis mit 64 Gates und aktuellen Planetenpositionen",
     })
+    for index, gate in enumerate(GATES):
+        start = 302 + index * 360 / 64
+        end = start + 360 / 64
+        outer_start, outer_end = point(start, 330), point(end, 330)
+        inner_end, inner_start = point(end, 290), point(start, 290)
+        center = GATE_CENTERS[gate]
+        sector = SubElement(root, "path", {
+            "d": (
+                f"M {outer_start[0]} {outer_start[1]} "
+                f"A 330 330 0 0 1 {outer_end[0]} {outer_end[1]} "
+                f"L {inner_end[0]} {inner_end[1]} "
+                f"A 290 290 0 0 0 {inner_start[0]} {inner_start[1]} Z"
+            ),
+            "fill": CENTER_MARKERS[center][2], "fill-opacity": ".65",
+            "data-zodiac-gate": str(gate), "data-center": center,
+        })
+        SubElement(sector, "title").text = gate_tooltip(gate, descriptions)
     for radius in (220, 290, 330, 380):
         SubElement(root, "circle", {"cx": "400", "cy": "400", "r": str(radius),
                                   "fill": "none", "stroke": "#60758e"})

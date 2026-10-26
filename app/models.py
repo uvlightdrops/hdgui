@@ -10,6 +10,16 @@ class Base(DeclarativeBase):
     pass
 
 
+class TransitSample(Base):
+    """Versioned, profile-independent ephemeris samples."""
+    __tablename__ = "transit_samples"
+
+    namespace: Mapped[str] = mapped_column(String(64), primary_key=True)
+    timestamp_utc: Mapped[datetime] = mapped_column(DateTime, primary_key=True)
+    payload: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+
+
 class UiSettings(Base):
     __tablename__ = "ui_settings"
 

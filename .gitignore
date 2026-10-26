@@ -1,10 +1,17 @@
 .venv/
+.venv
+venv/
+venv
+
 __pycache__/
 *.pyc
 /data/
 /app/data/gates-channels-compact.csv
 .env
+/.hdgui-api-token
 .pytest_cache/
 *.egg-info/
 .idea/
 test_*
+!/tests/test_center_timeline.py
+!/tests/test_center_timeline.js

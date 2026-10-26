@@ -25,18 +25,21 @@ python3 -m venv .venv
 # Optional for a new database: explicitly select the public sample catalog.
 # This replaces catalog names/descriptions; back up existing custom texts first.
 .venv/bin/python -m app.catalog_fixture app/data/catalog-default.yaml
-export HD_API_TOKEN='REPLACE_WITH_YOUR_LOCAL_API_TOKEN'
-.venv/bin/python -m app
+# Generates and saves a local API token if this is a new backend.
+./start.sh
 ```
 
-Open <http://127.0.0.1:8001>. Startup reuses a healthy local calculation service or creates/starts its Docker container. `./start.sh` is a convenience wrapper. Neither startup command runs migrations or imports catalog texts. For a separately managed service, see [Operations](doc/operations.md#startup-and-docker-lifecycle).
+Open <http://127.0.0.1:8001>. Startup reuses a healthy local calculation service or creates/starts its Docker container. `./start-backend.sh` starts only the Docker backend. Neither script runs migrations or imports catalog texts. **Both scripts reuse `.hdgui-api-token` (Git-ignored, permissions `600`); a new local backend gets an automatically generated token without printing it.** An exported `HD_API_TOKEN` overrides the file. For an existing backend without a known token, restore its previous token rather than generating a new one. See [API key setup](doc/operations.md#api-key-where-it-comes-from-required-before-first-start) and [Docker lifecycle](doc/operations.md#startup-and-docker-lifecycle).
 
 ## What is delivered
+
+Transit samples for timelines and gate-change searches are now persisted and reused across restarts. **Existing installations must run `.venv/bin/alembic upgrade head` before restarting the WebUI** (revision `0005`); see [calculation cache operations](doc/operations.md#calculation-cache).
 
 - A current-transit BodyGraph (`/`) and zodiac/gate wheel (`/transit`), with timestamp, table, configurable cache and optional page autoreload.
 - Future gate-change estimates based on API samples, including retrograde motion, with explicit sampling limits.
 - Birth-profile creation, editing, deletion and persistent SVG charts; personality/design activations for one globally selected current profile.
 - A zoomable, sampled gate timeline, ephemeris tables and transit series; optional fixed natal bands on the timeline.
+- A personal center timeline (`/centers`): combined natal/transit BodyGraph at a selectable UTC timestamp, beside nine independently selectable sampled center-definition tracks, with controls below.
 - Linked catalogs of 64 gates, 36 channels and seven circuits, with explicitly imported local texts.
 - A geometric gate-walk learning animation, **not** a planetary simulation.
 
@@ -52,6 +55,7 @@ Existing validation commands:
 .venv/bin/python -m unittest discover -s tests -q
 node tests/test_gate_catalog.js
 node tests/test_gate_timeline.js
+node tests/test_center_timeline.js
 ```
 
 The inherited BodyGraph layout is covered by **AGPL-3.0-or-later**: see [provenance](app/data/NOTICE) and [license text](app/data/LICENSE-AGPL). Review applicable obligations when deploying or distributing, and independently check the calculation service's license and terms. These documents do not relicense the project or upstream components.

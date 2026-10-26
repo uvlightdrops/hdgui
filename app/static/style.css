@@ -7,6 +7,10 @@ main { container-type: inline-size; }
 .sidebar a { padding: .75rem; border-radius: .4rem; text-decoration: none; }
 .sidebar .brand { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
 .sidebar a[aria-current="page"] { background: #344356; color: #fff; }
+.sidebar-group summary { padding: .75rem; cursor: pointer; border-radius: .4rem; }
+.sidebar-group[open] summary { color: #85dacc; }
+.sidebar-group a { display: block; margin-left: .75rem; }
+.celestial-symbol { font-size: 1.8rem; text-align: center; }
 a { color: #85dacc; }
 footer { color: #aab6c8; font-size: .9rem; }
 .heading, .actions { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
@@ -43,6 +47,20 @@ select { display: block; width: 100%; margin-top: .4rem; padding: .75rem; border
 .chart { display: block; width: 50%; height: auto; margin: auto; background: #fff; border-radius: .5rem; }
 [role="alert"] { color: #ffbaba; }
 :focus-visible { outline: 3px solid #ffdf9c; outline-offset: 3px; }
+.center-layout { display: grid; grid-template-columns: minmax(180px, 28%) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.center-bodygraph-panel, .center-timeline-panel { min-width: 0; }
+.transit-bodygraph.center-graph { width: 100%; max-width: 360px; margin: 0; }
+.transit-bodygraph.center-graph svg { max-height: none; }
+@container (max-width: 640px) {
+  .center-layout { grid-template-columns: minmax(0, 1fr); }
+  .transit-bodygraph.center-graph { max-width: 240px; }
+}
+.center-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: .5rem; align-items: center; margin: .5rem 0; }
+.center-track { position: relative; height: 30px; border: 1px solid #60758e; border-radius: .25rem; cursor: crosshair; overflow: hidden; background: #192536; }
+.center-segment { position: absolute; top: 0; bottom: 0; }
+.center-unknown { background: repeating-linear-gradient(135deg, #344356 0 4px, #192536 4px 8px); }
+.center-marker { position: absolute; top: 0; bottom: 0; border-left: 2px solid white; pointer-events: none; }
+#center-progress { width: 100%; }
 .transit-wheel { max-width: 850px; margin: auto; }
 .transit-wheel svg { width: 100%; height: auto; }
 input[type="checkbox"] { display: inline; width: auto; margin-right: .5rem; }

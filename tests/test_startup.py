@@ -1,14 +1,20 @@
 import contextlib
 import io
+import os
+from pathlib import Path
 import socket
 import subprocess
+import tempfile
 import unittest
 from unittest.mock import patch
 
+import click
 import httpx
+from click.testing import CliRunner
 
 from app import __main__ as entry
 from app import backend
+from app import token_store
 from app.backend import BackendError, ensure_backend, load_config, probe_health
 
 TOKEN = "unit-test-token-value"
@@ -76,6 +82,14 @@ class ConfigTests(unittest.TestCase):
 @patch.object(backend.time, "sleep", lambda _: None)
 @patch.object(backend.shutil, "which", lambda _: "/usr/bin/docker")
 class EnsureBackendTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.token_path = Path(directory.name) / "token"
+        token_patch = patch.object(token_store, "TOKEN_FILE", self.token_path)
+        token_patch.start()
+        self.addCleanup(token_patch.stop)
+
     def run_ensure(self, docker, health, env=None, timeout=5):
         env = {"HD_API_TOKEN": TOKEN} if env is None else env
         with patch.object(backend.subprocess, "run", docker), \
@@ -105,17 +119,29 @@ class EnsureBackendTests(unittest.TestCase):
             self.assertNotIn(TOKEN, " ".join(call_command))
         self.assertNotIn(TOKEN, self.output)
 
-    def test_missing_container_requires_token(self):
+    def test_missing_container_generates_and_persists_token(self):
         docker = FakeDocker(state=None)
-        with self.assertRaisesRegex(BackendError, "HD_API_TOKEN"):
-            self.run_ensure(docker, [httpx.ConnectError("x")], env={})
-        self.assertEqual(docker.actions(), ["ps"])
+        env = {}
+        self.run_ensure(docker, [httpx.ConnectError("x"), response()], env=env)
+        self.assertEqual(docker.actions(), ["ps", "run"])
+        self.assertEqual(self.token_path.read_text().strip(), env["HD_API_TOKEN"])
+        self.assertEqual(self.token_path.stat().st_mode & 0o777, 0o600)
+        self.assertNotIn(env["HD_API_TOKEN"], self.output)
+        self.assertNotIn(env["HD_API_TOKEN"], str(docker.calls[1][0]))
 
-    def test_starts_stopped_container_without_token(self):
+    def test_existing_backend_without_token_fails_without_generation(self):
+        for state, health in (("exited", httpx.ConnectError("x")), ("running", response())):
+            with self.subTest(state=state), self.assertRaisesRegex(BackendError, "bisherigen Token"):
+                self.run_ensure(FakeDocker(state=state), [health], env={})
+            self.assertFalse(self.token_path.exists())
+
+    def test_starts_stopped_container_with_saved_token(self):
+        token_store.create_saved_token({})
         docker = FakeDocker(state="exited")
-        self.run_ensure(docker, [httpx.ConnectError("x"), response()], env={})
+        env = {}
+        self.run_ensure(docker, [httpx.ConnectError("x"), response()], env=env)
         self.assertEqual(docker.actions(), ["ps", "start"])
-        self.assertIn("HD_API_TOKEN ist nicht gesetzt", self.output)
+        self.assertEqual(env["HD_API_TOKEN"], self.token_path.read_text().strip())
 
     def test_waits_for_running_unhealthy_container(self):
         docker = FakeDocker(state="running")
@@ -171,6 +197,11 @@ class EnsureBackendTests(unittest.TestCase):
 
 
 class EntryPointTests(unittest.TestCase):
+    def setUp(self):
+        token_patch = patch.object(entry, "load_saved_token")
+        self.load_token = token_patch.start()
+        self.addCleanup(token_patch.stop)
+
     def run_main(self, args):
         with patch.object(entry, "ensure_backend") as ensure, \
                 patch.object(entry.uvicorn_cli, "callback") as uvicorn_run, \
@@ -190,6 +221,7 @@ class EntryPointTests(unittest.TestCase):
     def test_no_api_skips_backend(self):
         code, ensure, uvicorn_run = self.run_main(["--no-api", "--port", "8123"])
         ensure.assert_not_called()
+        self.load_token.assert_called_once_with(os.environ)
         self.assertEqual(uvicorn_run.call_args.kwargs["port"], 8123)
         self.assertNotIn("no_api", uvicorn_run.call_args.kwargs)
 
@@ -219,6 +251,113 @@ class EntryPointTests(unittest.TestCase):
 
     def test_uvicorn_cli_is_not_mutated(self):
         self.assertNotIn("no_api", [param.name for param in entry.uvicorn_cli.params])
+
+
+class TokenStoreTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.path = Path(directory.name) / "token"
+        token_patch = patch.object(token_store, "TOKEN_FILE", self.path)
+        token_patch.start()
+        self.addCleanup(token_patch.stop)
+
+    def test_generated_token_is_reused_and_not_printed(self):
+        env = {}
+        with contextlib.redirect_stderr(io.StringIO()) as output:
+            token_store.create_saved_token(env)
+        token = env["HD_API_TOKEN"]
+        self.assertEqual(len(token), 64)
+        self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
+        self.assertNotIn(token, output.getvalue())
+        restored = {}
+        token_store.load_saved_token(restored)
+        self.assertEqual(restored, env)
+        token_store.create_saved_token(restored)
+        self.assertEqual(restored, env)
+
+    def test_webui_loads_saved_token_even_without_backend_management(self):
+        saved = {}
+        with contextlib.redirect_stderr(io.StringIO()):
+            token_store.create_saved_token(saved)
+        with patch.dict(os.environ, {"HD_API_TOKEN": ""}), \
+                patch.object(entry, "_check_frontend_address"), \
+                patch.object(entry, "ensure_backend") as ensure, \
+                patch.object(entry.uvicorn_cli, "callback") as run:
+            run.side_effect = lambda **kwargs: self.assertEqual(
+                os.environ["HD_API_TOKEN"], saved["HD_API_TOKEN"]
+            )
+            entry.main(["--no-api"])
+            run.assert_called_once()
+            ensure.assert_not_called()
+
+    def test_environment_takes_precedence(self):
+        self.path.write_text("file-token\n")
+        env = {"HD_API_TOKEN": TOKEN}
+        token_store.load_saved_token(env)
+        self.assertEqual(env["HD_API_TOKEN"], TOKEN)
+
+    def test_missing_file_does_not_generate(self):
+        env = {}
+        token_store.load_saved_token(env)
+        self.assertEqual(env, {})
+        self.assertFalse(self.path.exists())
+
+    def test_invalid_file_is_not_overwritten(self):
+        for content in ("", "two\nlines\n", "token with spaces", "\x00", "x" * 4097):
+            with self.subTest(content=content[:20]):
+                self.path.write_text(content)
+                self.path.chmod(0o600)
+                with self.assertRaisesRegex(click.ClickException, "gültigen"):
+                    token_store.load_saved_token({})
+                self.assertEqual(self.path.read_text(), content)
+
+    def test_insecure_permissions_and_symlink_are_rejected(self):
+        self.path.write_text("token\n")
+        self.path.chmod(0o644)
+        with self.assertRaisesRegex(click.ClickException, "Rechten 600"):
+            token_store.load_saved_token({})
+        link = self.path.with_name("link")
+        link.symlink_to(self.path)
+        with patch.object(token_store, "TOKEN_FILE", link), self.assertRaises(click.ClickException):
+            token_store.load_saved_token({})
+
+    def test_creation_error_is_reported(self):
+        with patch.object(token_store.os, "open", side_effect=PermissionError()), \
+                self.assertRaisesRegex(click.ClickException, "nicht anlegbar"):
+            token_store.create_saved_token({})
+
+
+class BackendEntryPointTests(unittest.TestCase):
+    def test_timeout_option_and_environment(self):
+        for args, env, expected in (
+            ([], {"HDGUI_API_START_TIMEOUT": None}, 60.0),
+            ([], {"HDGUI_API_START_TIMEOUT": "90"}, 90.0),
+            (["--api-timeout", "7"], {"HDGUI_API_START_TIMEOUT": "90"}, 7.0),
+        ):
+            with self.subTest(args=args, env=env), patch.object(backend, "ensure_backend") as ensure:
+                result = CliRunner().invoke(backend.main, args, env=env)
+                self.assertEqual(result.exit_code, 0, result.output)
+                ensure.assert_called_once_with(expected)
+
+    def test_invalid_timeout_does_not_start_backend(self):
+        for value in ("0", "-1", "invalid"):
+            with self.subTest(value=value), patch.object(backend, "ensure_backend") as ensure:
+                result = CliRunner().invoke(backend.main, ["--api-timeout", value])
+                self.assertEqual(result.exit_code, 2)
+                ensure.assert_not_called()
+
+    def test_help_does_not_start_backend(self):
+        with patch.object(backend, "ensure_backend") as ensure:
+            result = CliRunner().invoke(backend.main, ["--help"])
+        self.assertEqual(result.exit_code, 0)
+        ensure.assert_not_called()
+
+    def test_failure_exits_nonzero(self):
+        with patch.object(backend, "ensure_backend", side_effect=BackendError("Docker kaputt")):
+            result = CliRunner().invoke(backend.main)
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Docker kaputt", result.output)
 
 
 if __name__ == "__main__":

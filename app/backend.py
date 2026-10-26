@@ -9,6 +9,8 @@ from urllib.parse import urlsplit
 import click
 import httpx
 
+from app.token_store import create_saved_token, load_saved_token
+
 DEFAULT_API_URL = "http://127.0.0.1:9021"
 DEFAULT_CONTAINER = "hd-api"
 DEFAULT_IMAGE = "dturkuler/humandesign_api:latest"
@@ -145,11 +147,13 @@ def wait_until_ready(config: BackendConfig, timeout: float, check_container: boo
 def ensure_backend(timeout: float, environ=None) -> None:
     """Reuse a healthy service, start the named container, or create it as configured."""
     env = os.environ if environ is None else environ
+    load_saved_token(env)
     config = load_config(env)
     say = lambda message: click.echo(message, err=True)  # noqa: E731
 
     ready, _ = probe_health(config.health_url)
     if ready:
+        _require_existing_token(env)
         say(f"Berechnungsdienst unter {config.api_url} ist bereit und wird weiterverwendet.")
         _warn_token(env, say)
         return
@@ -160,12 +164,11 @@ def ensure_backend(timeout: float, environ=None) -> None:
             "gefunden. Docker installieren oder mit --no-api ohne Backend-Verwaltung starten."
         )
     state = container_state(config.container)
+    if state is not None:
+        _require_existing_token(env)
     if state is None:
         if not env.get("HD_API_TOKEN"):
-            raise BackendError(
-                f"Container {config.container} existiert nicht. Zum Anlegen muss HD_API_TOKEN "
-                "in der Umgebung gesetzt sein."
-            )
+            create_saved_token(env)
         say(
             f"Lege Container {config.container} aus {config.image} an "
             f"({config.publish}); das Image wird bei Bedarf heruntergeladen …"
@@ -194,6 +197,15 @@ def ensure_backend(timeout: float, environ=None) -> None:
     _warn_token(env, say)
 
 
+def _require_existing_token(env) -> None:
+    if not env.get("HD_API_TOKEN"):
+        raise BackendError(
+            "Backend-Dienst oder Container existiert bereits, aber HD_API_TOKEN fehlt. "
+            "Den bisherigen Token exportieren oder in .hdgui-api-token (Rechte 600) speichern. "
+            "Es wird kein neuer Token erzeugt; siehe doc/operations.md zur sicheren Neuerstellung."
+        )
+
+
 def _warn_existing(config: BackendConfig, say) -> None:
     say(
         f"Hinweis: {config.container} nutzt Token und Portzuordnung aus seiner Erstellung. "
@@ -207,3 +219,18 @@ def _warn_token(env, say) -> None:
     else:
         say("Hinweis: /health ist ohne Anmeldung erreichbar; ob HD_API_TOKEN passt, zeigt "
             "erst die erste Berechnung.")
+
+
+@click.command()
+@click.option(
+    "--api-timeout", type=click.FloatRange(min=0, min_open=True),
+    default=60.0, envvar="HDGUI_API_START_TIMEOUT", show_default=True,
+    help="Maximale Wartezeit auf die Bereitschaft des Backends in Sekunden.",
+)
+def main(api_timeout: float) -> None:
+    """Den lokalen Docker-Berechnungsdienst ohne WebUI starten."""
+    ensure_backend(api_timeout)
+
+
+if __name__ == "__main__":
+    main()

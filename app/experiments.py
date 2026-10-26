@@ -1,4 +1,6 @@
 from collections import OrderedDict
+import hashlib
+import json
 from datetime import UTC, datetime, timedelta
 from math import ceil
 from threading import Lock
@@ -6,15 +8,20 @@ from time import monotonic
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
+from sqlalchemy import delete, select, tuple_
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.api_client import ChartServiceError
 from app.bodygraph import render_gate_walk, render_walk_zodiac
 from app.gate_descriptions import gate_descriptions
-from app.transit import GATES, SIGNS
+from app.models import TransitSample
+from app.transit import GATES, SIGNS, TransitFrame
 
 MIN_TIME = datetime(1900, 1, 1, tzinfo=UTC)
 MAX_TIME = datetime(2099, 12, 31, 23, 59, 59, tzinfo=UTC)
 MAX_SAMPLES = 160
+MAX_STORED_SAMPLES = 20000
 
 
 def utc_timestamp(value: datetime) -> datetime:
@@ -70,8 +77,14 @@ def zodiac_position(longitude: float) -> str:
 
 
 class SampleCache:
-    def __init__(self, client):
+    def __init__(self, client, sessions=None, settings=None):
         self.client = client
+        self.sessions = sessions
+        if sessions is not None and settings is None:
+            raise ValueError("Persistent sample cache requires API/engine settings.")
+        self.namespace = hashlib.sha256(json.dumps([
+            settings.api_url.rstrip("/"), settings.engine_version, "transit-sample-v1",
+        ]).encode()).hexdigest() if settings is not None else None
         self._lock = Lock()
         self._compute_lock = Lock()
         self._frames = OrderedDict()
@@ -84,6 +97,57 @@ class SampleCache:
                 return entry[1]
         return None
 
+    def _stored(self, timestamp):
+        if self.sessions is None:
+            return None
+        with self.sessions() as session:
+            entry = session.get(TransitSample, (self.namespace, timestamp.replace(tzinfo=None)))
+            if entry is None:
+                return None
+            try:
+                frame = TransitFrame.model_validate_json(entry.payload)
+            except ValidationError as exc:
+                raise ChartServiceError(
+                    "Ungültiger Transit-Cache-Eintrag. Cache-Tabelle transit_samples prüfen."
+                ) from exc
+            if frame.timestamp_utc != timestamp:
+                raise ChartServiceError("Zeitpunkt im gespeicherten Transit-Cache stimmt nicht überein.")
+            return frame
+
+    def _store(self, frame):
+        if self.sessions is None:
+            return
+        try:
+            with self.sessions.begin() as session:
+                session.add(TransitSample(
+                    namespace=self.namespace,
+                    timestamp_utc=frame.timestamp_utc.replace(tzinfo=None),
+                    payload=frame.model_dump_json(),
+                    created_at=datetime.now(UTC).replace(tzinfo=None),
+                ))
+                session.flush()
+                oldest = select(TransitSample.namespace, TransitSample.timestamp_utc).order_by(
+                    TransitSample.created_at.desc(), TransitSample.namespace, TransitSample.timestamp_utc,
+                ).offset(MAX_STORED_SAMPLES)
+                session.execute(delete(TransitSample).where(
+                    tuple_(TransitSample.namespace, TransitSample.timestamp_utc).in_(oldest)
+                ), execution_options={"synchronize_session": False})
+        except IntegrityError:
+            # Another process may have stored the same immutable sample first.
+            if self._stored(frame.timestamp_utc) is None:
+                raise
+
+    def _remember(self, timestamp, frame):
+        with self._lock:
+            self._frames[timestamp] = (monotonic(), frame)
+            self._frames.move_to_end(timestamp)
+            while len(self._frames) > 512:
+                self._frames.popitem(last=False)
+
+    def transit(self, timestamp):
+        """Calculation-client interface used by background gate forecasts."""
+        return self.sample(timestamp)
+
     def sample(self, timestamp, *, wait=True):
         timestamp = timestamp.astimezone(UTC).replace(microsecond=0)
         cached = self._cached(timestamp)
@@ -95,20 +159,26 @@ class SampleCache:
             cached = self._cached(timestamp)
             if cached is not None:
                 return cached
-            frame = self.client.transit(timestamp)
-            with self._lock:
-                self._frames[timestamp] = (monotonic(), frame)
-                self._frames.move_to_end(timestamp)
-                while len(self._frames) > 512:
-                    self._frames.popitem(last=False)
+            frame = self._stored(timestamp)
+            if frame is None:
+                frame = self.client.transit(timestamp)
+                if frame.timestamp_utc != timestamp:
+                    raise ChartServiceError("Berechnungsdienst lieferte einen abweichenden Transit-Zeitpunkt.")
+                self._store(frame)
+            self._remember(timestamp, frame)
             return frame
+        except SQLAlchemyError as exc:
+            raise ChartServiceError(
+                "Transit-Cache nicht verfügbar. Datenbank prüfen und Alembic-Migrationen "
+                "(upgrade head) ausführen."
+            ) from exc
         finally:
             self._compute_lock.release()
 
 
-def experiment_router(client, templates, current_profile=lambda: None, descriptions=gate_descriptions):
+def experiment_router(client, templates, current_profile=lambda: None, descriptions=gate_descriptions, sample_cache=None):
     router = APIRouter(prefix="/experiments")
-    cache = SampleCache(client)
+    cache = sample_cache if sample_cache is not None else SampleCache(client)
     pages = {
         "ephemeris": ("Tierkreis & Ephemeriden", "Positionen als Tierkreiszeichen mit Grad und Minuten."),
         "series": ("Transit-Zeitreihe", "Positionen, Gates und Linien im zeitlichen Verlauf."),

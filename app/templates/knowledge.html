@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<section aria-labelledby="knowledge-title">
+  <p class="timeline-muted">KI-Autorenhinweis: Erstellt von GitHub Copilot am 2026-10-25. Das zugrunde liegende Modell ist nicht identifiziert.</p>
+  <h1 id="knowledge-title">Wissen</h1>
+  <nav class="timeline-actions" aria-label="Wissensbereiche">
+    <a class="button" href="/knowledge/celestial-bodies">Himmelskörper &amp; Symbole</a>
+    <a class="button" href="/gates">Tore</a>
+    <a class="button" href="/channels">Kanäle</a>
+  </nav>
+  <article id="center-timeline" class="timeline-panel">
+    <h2>Persönlicher Zentren-Verlauf</h2>
+    <p>Die Ansicht <a href="/centers">Zentren-Verlauf</a> kombiniert die Geburtsaktivierungen des aktuell ausgewählten Profils mit den Transits zum gewählten Zeitpunkt. Im Human-Design-System ist ein Zentrum definiert, sobald beide Tore mindestens eines seiner Kanäle aktiviert sind. Ein einzelnes aktiviertes Tor genügt nicht.</p>
+    <p>Dabei zählen vollständige Geburtskanäle, reine Transitkanäle und Kanäle, deren Tore gemeinsam durch Geburt und Transit aktiviert werden. Bereits im Geburtsgraphen definierte Zentren bleiben über den ganzen Zeitraum definiert.</p>
+    <h3>BodyGraph und Farben</h3>
+    <p>Die Kanalhälften unterscheiden ihre Aktivierungsquellen: Schwarz steht für Persönlichkeit, Rot für Design und Blau für Transit. Mehrere Quellen werden übereinander dargestellt. Goldene Zentren sind im kombinierten Graphen definiert.</p>
+    <h3>Zeitleiste bedienen</h3>
+    <p>Die neun Zentrum-Spuren lassen sich unabhängig ein- und ausschalten. Zeitraum und Detailgrad bestimmen die Abtastung. Ein Klick auf eine Spur oder der mit der Tastatur bedienbare Zeitregler wählt den Zeitpunkt für den oberen BodyGraph. Dieser wird separat für den ausgewählten Zeitpunkt berechnet; er wird nicht auf einen Abtastpunkt gerundet.</p>
+    <h3>Balken und Grenzen der Abtastung</h3>
+    <p>Ein farbiger Balken bedeutet: Das Zentrum war am linken Abtastpunkt definiert. Dieser Zustand wird bis zum nächsten berechneten Punkt fortgeschrieben. Eine leere Spur bedeutet dort nicht definiert; Schraffur kennzeichnet noch nicht berechnete Abschnitte. Nur zwischen zwei verfügbaren benachbarten Punkten werden Zustände dargestellt.</p>
+    <p>Die Balkengrenzen sind keine exakten Wechselzeitpunkte. Kurze Aktivierungen können zwischen den Abtastpunkten fehlen. Ein höherer Detailgrad oder ein kürzerer Zeitraum verbessert die Auflösung.</p>
+  </article>
+  <p class="timeline-muted">Human Design ist ein interpretatives System, kein wissenschaftlich gesichertes Modell von Persönlichkeit oder Lebensereignissen. Berechnete Positionen bestätigen keine persönlichen Vorhersagen.</p>
+</section>
+{% endblock %}

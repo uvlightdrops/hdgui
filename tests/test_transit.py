@@ -15,6 +15,7 @@ from alembic.config import Config
 from fastapi.testclient import TestClient
 
 from app.api_client import ChartClient, ChartServiceError
+from app.bodygraph import render_walk_zodiac
 from app.config import Settings
 from app.main import create_app
 from app.transit import GATES, TransitFrame, TransitPosition, render_wheel
@@ -85,9 +86,31 @@ class TransitTests(unittest.TestCase):
         self.assertNotIn("<header>", response.text)
         self.assertIn('class="sidebar"', response.text)
         self.assertIn('href="/transit" aria-current="page"', response.text)
+        self.assertIn('class="sidebar-group" open', response.text)
+        self.assertIn('<summary>Transit</summary>', response.text)
+        self.assertIn('aria-current="page">Zodiac-Ansicht</a>', response.text)
         self.assertNotIn("<footer>", response.text)
         self.assertNotIn("Momentaufnahme", response.text)
         self.assertEqual(response.headers["cache-control"], "no-store")
+
+    def test_all_wheel_gates_use_completed_gate_walk_colors(self):
+        frame = TransitFrame(timestamp_utc=self.timestamp,
+                             positions=[TransitPosition.model_validate(self.position)])
+        wheel = ElementTree.fromstring(render_wheel(frame))
+        walk = ElementTree.fromstring(render_walk_zodiac())
+        sectors = [item for item in wheel.iter() if item.get("data-zodiac-gate")]
+        walk_sectors = {item.get("data-zodiac-gate"): item for item in walk.iter()
+                        if item.get("data-zodiac-gate")}
+        self.assertEqual([int(item.get("data-zodiac-gate")) for item in sectors], list(GATES))
+        for sector in sectors:
+            reference = walk_sectors[sector.get("data-zodiac-gate")]
+            self.assertEqual(sector.get("fill"), reference.get("fill"))
+            self.assertEqual(sector.get("data-center"), reference.get("data-center"))
+            self.assertEqual(sector.get("fill-opacity"), ".65")
+        labels = {item.text: item.get("fill") for item in wheel.iter()
+                  if item.tag.endswith("}text")}
+        self.assertEqual(labels["57"], "#85dacc")
+        self.assertEqual(labels["41"], "#e3eaf3")
 
     def test_forecast_endpoint_uses_shared_transit_frame(self):
         frame = TransitFrame(timestamp_utc=self.timestamp,
