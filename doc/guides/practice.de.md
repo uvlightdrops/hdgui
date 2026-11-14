@@ -1,16 +1,48 @@
 > Text generiert durch GitHub Copilot (Auto-Modus; zugrunde liegendes Modell nicht ausgewiesen) am 2026-10-09.
 
+---
+title: Praxisleitfaden
+project: hdgui
+agent_project: hdgui
+scope: guides
+purpose: Beschreibt reflektierende Arbeitsweisen und Grenzen verantwortungsvoller Nutzung der Astrologie- und Human-Design-Funktionen in HDGUI.
+created: 2026-10-09
+updated: 2026-11-14
+update_reason: In den Guides-Ordner verschoben und semantisch strukturiert; Verweise aktualisiert.
+status: active
+semantic_blocks:
+  - id: zweck-grenzen
+  - id: anwendung-heute
+  - id: arbeitsweisen
+  - id: zeit-unsicherheit
+  - id: einwilligung-privatsphaere
+  - id: weiterentwicklungen
+relations:
+  - target: README.md
+    type: parent
+    reason: Dokumentationsübersicht der Guides.
+  - target: practice.en.md
+    type: reference
+    reason: Englische Fassung dieses Praxisleitfadens.
+  - target: ../architecture/system-overview.md
+    type: reference
+    reason: Technische Möglichkeiten und Grenzen, auf die der Leitfaden verweist.
+  - target: operations.md
+    type: reference
+    reason: Installation, Datenschutz und Datenhandhabung.
+---
+
 # Praxis: eine Landkarte zur Reflexion, kein Urteil
 
-[Dokumentationsübersicht](../README.md#documentation) · [English version](practice.en.md)
+[Dokumentationsübersicht](../README.md#documentation) · [Guides-Übersicht](README.md) · [English version](practice.en.md)
 
-## 1. Zweck und Grenzen der Deutung
+## 1. Zweck und Grenzen der Deutung [zweck-grenzen]
 
 HDGUI verbindet Planetenpositionen, Tierkreis-Reihenfolge und Human-Design-Tore in einem gemeinsamen visuellen Arbeitsraum. Der praktische Wert liegt in der Orientierung: erkennen, worauf ein Symbol verweist, ein Geburtschart von einem wechselnden Transit unterscheiden und klarere Fragen stellen. Die Anwendung ist weder eine automatische Deutung noch eine Autorität über persönliche Entscheidungen.
 
 Astrologie und Human Design sind interpretative Traditionen, keine wissenschaftlich etablierten Erklärungen von Persönlichkeit, Gesundheit oder Lebensereignissen. Astronomisch berechnete Positionen bestätigen nicht die ihnen zugeschriebenen Bedeutungen. Persönliche Vorhersagen werden durch diese Anwendung nicht validiert. Die Inhalte können freiwillig als Sprache der Reflexion dienen, nicht als Diagnose, Behandlung, Garantie oder unveränderliche Beschreibung eines Menschen.
 
-## 2. Was die Anwendung heute bietet
+## 2. Was die Anwendung heute bietet [anwendung-heute]
 
 Das aktuelle Transit-Rad ordnet Planetenpositionen dem Tierkreis und der Folge der 64 Tore zu; der BodyGraph auf der Startseite zeigt Tore, vollständige Kanäle und Zentren, die **ausschließlich aus diesem Transit** abgeleitet werden. Zeitstempel und Tabelle beziehen die Darstellung auf eine konkrete Berechnung statt auf ein unbestimmtes „Jetzt“. Neuladen oder Autoreload erzeugt neue Momentaufnahmen, keine kontinuierliche Planetenanimation.
 
@@ -18,7 +50,7 @@ Gespeicherte Geburtsprofile bieten eine beständigere Referenz. Persönlichkeit 
 
 Der Katalog der Tore, Kanäle und Schaltkreise vermittelt eine Beziehungssprache: Ein Tor verbindet sich über Kanäle mit harmonischen Partnern, und Kanäle gehören zu Schaltkreisen. Kurze öffentliche Beispielbeschreibungen können durch einen berechtigt verwendeten lokalen Katalog ersetzt werden. Die Texte sind Deutungsangebote, keine gemessenen Eigenschaften. Die Gate-Wanderung hilft beim Lernen der räumlichen Reihenfolge und Zentrumszugehörigkeit; sie folgt Geometrie, nicht der Bewegung eines Planeten oder historischer Zeit.
 
-## 3. Arbeitsweisen für Lernen und Gespräch
+## 3. Arbeitsweisen für Lernen und Gespräch [arbeitsweisen]
 
 **Vor der Deutung orientieren.** Die aktuelle Transit-Ansicht öffnen, den UTC-Zeitstempel lesen, einen Himmelskörper wählen und sein Tor im Katalog aufsuchen. Dem verknüpften Kanal und Schaltkreis folgen, um die inneren Beziehungen des Systems zu verstehen. Eine hilfreiche Frage lautet „Welche Assoziationen lädt diese Sprache ein?“ statt „Was muss mir passieren?“
 
@@ -28,13 +60,13 @@ Der Katalog der Tore, Kanäle und Schaltkreise vermittelt eine Beziehungssprache
 
 **Ein offenes Gespräch unterstützen.** In einer freiwilligen Sitzung bestimmt die Person, welche Themen hilfreich sind und welche sie verwirft. Menschen nicht anhand von Toren bewerten, ihnen keine festen Rollen zuschreiben und ein Chart nicht über Einwilligung, Arbeit, Beziehungen oder Gesundheitsversorgung entscheiden lassen. Die aktuelle Installation erlaubt die Auswahl jeweils eines Profils, keine gleichzeitige Mehrpersonen-Analyse.
 
-## 4. Zeit und Unsicherheit ehrlich lesen
+## 4. Zeit und Unsicherheit ehrlich lesen [zeit-unsicherheit]
 
 Der Gate-Verlauf besteht aus berechneten Stichproben; verbindende Linien sind Lesehilfen, kein Nachweis jedes Zwischenzustands. Große Zeitfenster können kurze Tor-Aufenthalte übersehen, besonders bei schnell bewegten Himmelskörpern. Hineinzoomen oder mehr Detail hilft, beseitigt aber nicht die Präzisionsgrenzen des Berechnungsdienstes.
 
 „Next Gate“ und die zugehörige UTC-Schätzung beziehen sich auf eine rechnerische Suche nach einem Tor-Grenzübertritt, einschließlich Rückläufigkeit. Sie sagen kein persönliches Ereignis, keinen Gefühlszustand und kein günstiges Entscheidungsfenster voraus. Kurze Übertritte können übersehen werden, Suchen können scheitern und Schätzungen haben eine begrenzte zeitliche Auflösung. Auch eine unbekannte oder unsichere Geburtszeit begrenzt das Vertrauen in Geburtsreferenzen; eine optisch präzise Grafik darf unsichere Eingaben nicht verdecken.
 
-## 5. Einwilligung, Privatsphäre und Selbstbestimmung
+## 5. Einwilligung, Privatsphäre und Selbstbestimmung [einwilligung-privatsphaere]
 
 Geburtsdatum, Uhrzeit, Ort und identifizierende Bezeichnungen verdienen Sorgfalt. Vor dem Anlegen fremder Profile informierte Einwilligung einholen, gespeicherte Daten und Zugriffsmöglichkeiten auf den Rechner erläutern sowie Löschung und Aufbewahrung von Sicherungen vereinbaren. Wenn möglich eine sparsame Bezeichnung verwenden. Lokaler Betrieb vermindert die Übertragung an Außenstehende nur, wenn auch der Berechnungsdienst lokal läuft; er ersetzt weder Zugriffsschutz noch sorgfältigen Umgang.
 
@@ -42,7 +74,7 @@ Die Anwendung bietet keine Anmeldung oder Trennung zwischen Benutzern. Gemeinsam
 
 Deutungen sollen veränderbar bleiben. Ein Tor, Kanal oder Zentrum ist weder Schicksal noch Defizit, medizinischer Befund oder Verpflichtung. Entscheidungen bleiben bei der Person, unter Berücksichtigung realer Umstände und gegebenenfalls geeigneter fachlicher Beratung.
 
-## 6. Mögliche Weiterentwicklungen — nicht umgesetzt
+## 6. Mögliche Weiterentwicklungen — nicht umgesetzt [weiterentwicklungen]
 
 Ein echter chronologischer Planeten-Player könnte wechselnde Konfigurationen leichter erforschbar machen, mit Pause, ausdrücklich angezeigter Simulationszeit und wählbarer Geschwindigkeit. Er wäre etwas anderes als die bestehende geometrische Gate-Wanderung. Klare Angaben zu Quelle und Abtastung wären notwendig, damit Bewegung keine höhere Präzision als die Berechnung suggeriert.
 
@@ -50,4 +82,4 @@ Optionale Tagebuchfunktionen, Anmerkungen und reproduzierbare Exporte könnten e
 
 Weitere Möglichkeiten sind zugängliche Unterscheidungen jenseits von Farbe, zweisprachige Erklärungen in der Oberfläche, transparente alternative Kataloge mit Nutzungsrechten und ausdrückliche Vergleiche bei unsicherer Geburtszeit. Eine künftige Deutungshilfe sollte Annahmen und Herkunft eines Vorschlags zeigen, Widerspruch zulassen und deterministische oder medizinische Schlussfolgerungen vermeiden.
 
-Gemeinsame Praxis- oder Klientenabläufe würden zuerst Anmeldung, Eigentümertrennung, sicheren Zugriff und sinnvolle Aufbewahrungs-/Exportmöglichkeiten benötigen. Dies sind Vorschläge, keine Aussagen über die heutige lokale Anwendung. Technische Empfehlungen stehen auf Englisch in [Architecture](architecture.md); Installation und Datenhandhabung in [Operations](operations.md).
+Gemeinsame Praxis- oder Klientenabläufe würden zuerst Anmeldung, Eigentümertrennung, sicheren Zugriff und sinnvolle Aufbewahrungs-/Exportmöglichkeiten benötigen. Dies sind Vorschläge, keine Aussagen über die heutige lokale Anwendung. Technische Empfehlungen stehen auf Englisch in [Architecture](../architecture/system-overview.md); Installation und Datenhandhabung in [Operations](operations.md).

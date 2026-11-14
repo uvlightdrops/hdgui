@@ -1,10 +1,43 @@
-# Architecture
+---
+title: System Architecture
+project: hdgui
+agent_project: hdgui
+scope: architecture
+purpose: Describes the delivered runtime, domain boundaries, persistence, API flows, caches and limitations of HDGUI.
+created: 2026-10-09
+updated: 2026-11-14
+update_reason: Move into architecture documentation folder and separate the multilingual catalog migration design.
+status: active
+semantic_blocks:
+  - id: runtime-boundaries
+  - id: module-responsibilities
+  - id: domain-persistence
+  - id: api-presentation-flows
+  - id: cache-concurrency
+  - id: accuracy-limitations
+  - id: proposed-developments
+relations:
+  - target: README.md
+    type: parent
+    reason: Architecture documentation index.
+  - target: knowledge-catalog-migration.md
+    type: reference
+    reason: Proposed unified multilingual catalog schema and rollout.
+  - target: ../guides/operations.md
+    type: reference
+    reason: Installation, database migrations, imports and operational procedures.
+  - target: ../features/feature-catalog.md
+    type: reference
+    reason: User-facing behavior implemented by the documented architecture.
+---
 
-[Documentation index](../README.md#documentation) · [Operations](operations.md) · [Practice](practice.en.md)
+# System Architecture
+
+[Documentation index](../README.md#documentation) · [Architecture index](README.md) · [Operations](../guides/operations.md)
 
 This document describes the implementation, not the earlier aspirational design. Recommendations below are explicitly **proposed**, not already available.
 
-## Runtime boundaries
+## Runtime boundaries [runtime-boundaries]
 
 ```text
 Browser: HTML / SVG / local CSS and JavaScript
@@ -23,9 +56,9 @@ python -m app / start.sh -> frontend address check + optional Docker backend sta
 
 FastAPI renders pages and handles forms/JSON endpoints. Jinja2 provides server-rendered templates; local JavaScript adds timeline loading, profile overlays, catalog highlights and geometric animation. This is **not an HTMX application**. No external browser chart library/resource is required for the timeline.
 
-The WebUI does not implement a second astronomical ephemeris or the engine's design-time calculation. `ChartClient` owns upstream transport/error handling and response mapping. Normalized Pydantic `TransitFrame`, `TransitPosition` and `NatalActivations` models validate calculation data before domain use. The client requests UTC at a zero-offset reference location; see [time handling](operations.md#storage-time-handling-and-global-settings).
+The WebUI does not implement a second astronomical ephemeris or the engine's design-time calculation. `ChartClient` owns upstream transport/error handling and response mapping. Normalized Pydantic `TransitFrame`, `TransitPosition` and `NatalActivations` models validate calculation data before domain use. The client requests UTC at a zero-offset reference location; see [time handling](../guides/operations.md#storage-time-settings).
 
-## Modules and responsibilities
+## Modules and responsibilities [module-responsibilities]
 
 | Area | Current responsibility |
 |---|---|
@@ -44,7 +77,7 @@ The WebUI does not implement a second astronomical ephemeris or the engine's des
 
 The app factory can accept a replacement client, which supports testing and a future provider boundary. Today this is a concrete client/adapter pattern, **not** a complete provider protocol, plugin registry or interchangeable engine framework.
 
-## Domain and persistent data
+## Domain and persistent data [domain-persistence]
 
 Birth profiles store a UUID, label, local birth time, IANA timezone, UTC instant and place label. SVG storage and natal-activation storage are independent; neither is a substitute for the other. Normalized natal rows distinguish `personality` and `design`, body, longitude, gate and line.
 
@@ -58,9 +91,11 @@ Natal derivation reads database gate/channel topology and takes the union of per
 
 Database topology is not yet a single source for every renderer: frozen migrations and runtime rendering/domain constants retain overlapping gate/channel knowledge. A recommendation below addresses this duplication; do not describe the current code as a universally database-driven topology engine.
 
-Catalog pages expose gates, harmonic partners, channels and circuit relations, plus the structured vocabulary at `/knowledge/entities`. Tooltip/render text comes from database records. Entity text import is partial and non-destructive; human-authored entries are protected unless replacement is explicit. Historical profile-specific CSV annotations are not universal domain data. Fresh migrations need no private fixture; optional imports follow the [operations reference](operations.md#catalog-imports-and-private-fixtures).
+Catalog pages expose gates, harmonic partners, channels and circuit relations, plus the structured vocabulary at `/knowledge/entities`. Tooltip/render text comes from database records. Entity text import is partial and non-destructive; human-authored entries are protected unless replacement is explicit. Historical profile-specific CSV annotations are not universal domain data. Fresh migrations need no private fixture; optional imports follow the [operations reference](../guides/operations.md#catalog-imports).
 
-## API and presentation flows
+The current knowledge-catalog structure and its proposed multilingual migration are described separately in the [unified catalog migration design](knowledge-catalog-migration.md#knowledge-model). Revision `0007` is the current schema; the unified data model is still a proposal.
+
+## API and presentation flows [api-presentation-flows]
 
 | WebUI route | Behavior |
 |---|---|
@@ -94,7 +129,7 @@ The view reuses the existing adaptive sample plan (up to 160 points) and shares 
 
 Center frame requests require the page's current profile ID, check selection/birth time again after calculation and return JSON errors. The browser rejects changed profile/engine/API calculation identities, discards canceled responses and clears stale profile output. Busy sample responses are retried at bounded intervals; other failures stop loading with an explicit retry instruction. Persistent transit samples require migration `0005`; no text-catalog import is required.
 
-## Cache and concurrency model
+## Cache and concurrency model [cache-concurrency]
 
 | Cache/service | Lifetime and coordination |
 |---|---|
@@ -119,7 +154,8 @@ Persistent calculations write only on successful validation. Natal service reche
 
 All memory caches/locks are **per process**. Multiple Uvicorn workers do not share them and can duplicate upstream work. Database persistence is shared only if workers use the same database; it does not turn in-memory synchronization into distributed coordination.
 
-## Accuracy and delivered limitations
+<a id="accuracy-limitations"></a>
+## Accuracy and delivered limitations [accuracy-limitations]
 
 - The inspected upstream endpoint rounds ecliptic longitude to three decimals. The WebUI's normalized values cannot restore omitted precision; engine correctness/version compatibility still needs verification.
 - Gate-change forecasts search actual future API samples rather than linearly extrapolating. Adaptive steps consider both gate boundaries and retrograde motion. A detected change is bracketed to at most 30 seconds, with roughly ten years of search horizon and a 10,000-request budget. Very short crossings below sampling resolution can be missed. Missing changes, unsupported data and errors are explicit; estimates are not guaranteed exact timestamps.
@@ -132,15 +168,15 @@ All memory caches/locks are **per process**. Multiple Uvicorn workers do not sha
 
 Astronomical position computation and Human Design rule mapping are distinct from validating interpretive claims about people or events. Neither the API nor these visualizations establish predictive or clinical validity.
 
-## Proposed engineering developments
+## Proposed engineering developments [proposed-developments]
 
 These are recommendations, not commitments or existing features:
 
 1. **Formal provider boundary:** define a narrow protocol for timestamp positions, natal activations and SVG capability; keep upstream-specific schemas inside adapters. Add contract tests for precision, timestamps, failures and compatible versions before supporting another engine.
 2. **Clear service decomposition:** move route orchestration out of the large app module while retaining transport, validation, domain derivation, persistence and presentation boundaries. The current ORM/service structure is a starting point, not a finished plugin architecture.
-3. **Unified topology policy:** keep historical migrations frozen, but establish one tested runtime catalog of immutable topology and verify migration/database/renderer consistency. Keep mutable wording and personal notes separate from structural definitions.
+3. **Unified multilingual knowledge catalog:** follow the [expand–migrate–contract plan](knowledge-catalog-migration.md#expand-migrate-contract-rollout) to consolidate concept identities and localized prose without weakening canonical topology constraints. Keep historical migrations frozen and prove database/renderer consistency.
 4. **True transit playback:** implement explicit simulation time, pause/speed/return-to-now, measured prefetch windows and wrap-aware visual interpolation. Distinguish calculated gate/line values from interpolated marker motion; do not relabel gate-walk or page autoreload as this feature.
 5. **Provenance and uncertainty:** record verified engine/build metadata and sampling/precision limits in exports or comparison views. Make narrow-window inspection and uncertainty more visible before adding interpretive summaries.
 6. **Deployment hardening first:** before public or multi-user use, add authentication, ownership/authorization, secure transport, retention/export controls and database/concurrency tests. Introduce shared caching/job coordination only when measured multi-process demand warrants it.
 
-Conceptual extensions and responsible practice are discussed separately in [English](practice.en.md) and [German](practice.de.md).
+Conceptual extensions and responsible practice are discussed separately in [English](../guides/practice.en.md) and [German](../guides/practice.de.md).

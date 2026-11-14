@@ -8,12 +8,13 @@ HDGUI is a local Python WebUI for exploring geocentric planetary positions along
 
 | Document | Purpose |
 |---|---|
-| [Feature Catalog](doc/features.md) | User-facing feature inventory and delivered limitations |
-| [Operations](doc/operations.md) | Installation, configuration, Docker lifecycle, migrations, catalog imports, backup and troubleshooting |
-| [Architecture](doc/architecture.md) | Actual implementation, domain boundaries, API integration, caches, limitations and proposed engineering work |
-| [Practice — English](doc/practice.en.md) | Value, reflective workflows and possible future developments for astrology and Human Design practice |
-| [Practice — German](doc/practice.de.md) | Equivalent conceptual guide in German |
-| [Original planning notes](doc/todo.md) | Historical German user notes, preserved unchanged; not a maintained technical specification |
+| [Documentation Index](doc/README.md) | Navigation for architecture, features and guides |
+| [Feature Catalog](doc/features/feature-catalog.md) | User-facing feature inventory and delivered limitations |
+| [Operations](doc/guides/operations.md) | Installation, configuration, Docker lifecycle, migrations, catalog imports, backup and troubleshooting |
+| [Architecture](doc/architecture/system-overview.md) | Actual implementation, domain boundaries, API integration, caches and limitations |
+| [Knowledge Catalog Migration](doc/architecture/knowledge-catalog-migration.md) | Proposed unified multilingual knowledge model and migration approach |
+| [Practice — English](doc/guides/practice.en.md) | Value, reflective workflows and possible future developments for astrology and Human Design practice |
+| [Practice — German](doc/guides/practice.de.md) | Equivalent conceptual guide in German |
 
 ## Quick start
 
@@ -30,11 +31,11 @@ python3 -m venv .venv
 ./start.sh
 ```
 
-Open <http://127.0.0.1:8001>. Startup reuses a healthy local calculation service or creates/starts its Docker container. `./start-backend.sh` starts only the Docker backend. Neither script runs migrations or imports catalog texts. **Both scripts reuse `.hdgui-api-token` (Git-ignored, permissions `600`); a new local backend gets an automatically generated token without printing it.** An exported `HD_API_TOKEN` overrides the file. For an existing backend without a known token, restore its previous token rather than generating a new one. See [API key setup](doc/operations.md#api-key-where-it-comes-from-required-before-first-start) and [Docker lifecycle](doc/operations.md#startup-and-docker-lifecycle).
+Open <http://127.0.0.1:8001>. Startup reuses a healthy local calculation service or creates/starts its Docker container. `./start-backend.sh` starts only the Docker backend. Neither script runs migrations or imports catalog texts. **Both scripts reuse `.hdgui-api-token` (Git-ignored, permissions `600`); a new local backend gets an automatically generated token without printing it.** An exported `HD_API_TOKEN` overrides the file. For an existing backend without a known token, restore its previous token rather than generating a new one. See [API key setup](doc/guides/operations.md#api-key-setup) and [Docker lifecycle](doc/guides/operations.md#startup-docker-lifecycle).
 
 ## What is delivered
 
-Transit samples for timelines and gate-change searches are now persisted and reused across restarts. **Existing installations must run `.venv/bin/alembic upgrade head` before restarting the WebUI** (revision `0005`); see [calculation cache operations](doc/operations.md#calculation-cache).
+Transit samples for timelines and gate-change searches are now persisted and reused across restarts. **Existing installations must run `.venv/bin/alembic upgrade head` before restarting the WebUI** (revision `0005`); see [calculation cache operations](doc/guides/operations.md#calculation-cache).
 
 - A current-transit BodyGraph (`/`) and zodiac/gate wheel (`/transit`), with timestamp, table, configurable cache and optional page autoreload.
 - Future gate-change estimates based on API samples, including retrograde motion, with explicit sampling limits.

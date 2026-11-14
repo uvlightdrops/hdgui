@@ -19,20 +19,20 @@ semantic_blocks:
   - id: settings-data
   - id: not-delivered
 relations:
-  - target: ../README.md
+  - target: README.md
     type: parent
-    reason: The README is the project documentation index and short feature summary.
-  - target: architecture.md
+    reason: Feature documentation index.
+  - target: ../architecture/system-overview.md
     type: reference
     reason: Architecture describes implementation details, constraints and data flows behind these features.
-  - target: operations.md
+  - target: ../guides/operations.md
     type: reference
     reason: Operations documents installation, configuration, migrations and data handling.
 ---
 
 # Feature Catalog
 
-[Documentation index](../README.md#documentation) · [Architecture](architecture.md) · [Operations](operations.md)
+[Documentation index](../README.md#documentation) · [Feature index](README.md) · [Architecture](../architecture/system-overview.md) · [Operations](../guides/operations.md)
 
 HDGUI is a local, single-user web interface for exploring geocentric planetary positions alongside the Human Design gate system. A separate `humandesign_api` service supplies calculations; HDGUI presents results and manages local profiles, settings and cached data.
 
@@ -73,7 +73,7 @@ The tracks reuse bounded samples. Unloaded gaps remain visible, short transition
 
 ## Settings and local data [settings-data]
 
-HDGUI keeps profiles, saved charts, settings and persistent calculation samples in its local database. In-memory caches are process-local. There are no accounts or profile ownership controls, so the application is intended to remain on localhost. See [Operations](operations.md) for configuration, migrations, backup and data-handling details.
+HDGUI keeps profiles, saved charts, settings and persistent calculation samples in its local database. In-memory caches are process-local. There are no accounts or profile ownership controls, so the application is intended to remain on localhost. See [Operations](../guides/operations.md) for configuration, migrations, backup and data-handling details.
 
 ## Not delivered [not-delivered]
 

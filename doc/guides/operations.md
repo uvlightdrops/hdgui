@@ -1,10 +1,46 @@
+---
+title: Operations
+project: hdgui
+agent_project: hdgui
+scope: guides
+purpose: Documents installation, configuration, migration, catalog import, backup, security and troubleshooting procedures.
+created: 2026-10-09
+updated: 2026-11-14
+update_reason: Move into guides folder and link the planned multilingual catalog migration design.
+status: active
+semantic_blocks:
+  - id: api-key-setup
+  - id: installation-updates
+  - id: configuration
+  - id: startup-docker-lifecycle
+  - id: catalog-imports
+  - id: storage-time-settings
+  - id: backup-restoration
+  - id: security-licensing
+  - id: troubleshooting
+relations:
+  - target: README.md
+    type: parent
+    reason: Guides documentation index.
+  - target: ../architecture/system-overview.md
+    type: reference
+    reason: Current system and implementation behavior.
+  - target: ../architecture/knowledge-catalog-migration.md
+    type: reference
+    reason: Proposed unified catalog schema and rollout.
+  - target: ../features/feature-catalog.md
+    type: reference
+    reason: Delivered capabilities and limitations.
+---
+
 # Operations
 
-[Documentation index](../README.md#documentation) · [Architecture](architecture.md) · [Practice](practice.en.md)
+[Documentation index](../README.md#documentation) · [Guides index](README.md) · [Architecture](../architecture/system-overview.md) · [Practice](practice.en.md)
 
 This is the operational reference for the current **local, single-user** implementation. There is no login, profile ownership or server-side per-user isolation. Do not expose it publicly or to an untrusted shared network.
 
-## API key: where it comes from (required before first start)
+<a id="api-key-setup"></a>
+## API key: where it comes from (required before first start) [api-key-setup]
 
 **The local API key is generated automatically on first setup.** It is a shared secret, not a key issued by Docker Hub or an external API provider. There is no registration step. The backend container and WebUI must use exactly the same **`HD_API_TOKEN`**. HDGUI passes it to a newly created container and sends it as a bearer token with calculation requests.
 
@@ -37,7 +73,7 @@ Run the save command from the repository root; it refuses to overwrite an existi
 
 **A healthy `/health` response does not validate the key.** A missing or mismatched token causes calculation failures even when the backend is running.
 
-## Installation and updates
+## Installation and updates [installation-updates]
 
 Use Python 3.12+ and run commands from the repository root:
 
@@ -57,7 +93,9 @@ On updates, back up the database, update/install the project dependencies and ru
 
 Revision `0006` adds persisted center-timeline samples. Revision `0007` adds the structured HD-entity catalog and complete natal-chart snapshots; it preserves existing activations and leaves newly added activation detail fields empty until recalculated. The migration seeds entity structure, including 384 gate-line text slots, but does not import descriptions. Run `alembic upgrade head` before using the entity catalog or recalculating complete birth charts.
 
-## Configuration
+The future unified knowledge catalog and multilingual text store are a separate proposed expand–migrate–contract change, not part of revision `0007`. If implemented, Alembic will preserve and copy existing German catalog text automatically; no manual database migration or re-entry should be needed. See the [architecture and rollout plan](../architecture/knowledge-catalog-migration.md#expand-migrate-contract-rollout), including locale handling, provenance and the checks required before legacy columns are removed.
+
+## Configuration [configuration]
 
 Set environment variables in the shell or process manager before running migrations, imports or the application. The application does not automatically load a `.env` file.
 
@@ -65,7 +103,7 @@ Set environment variables in the shell or process manager before running migrati
 |---|---|
 | `HDGUI_DATABASE_URL` | `sqlite:///data/hdgui.db`; used by application, migration and catalog import |
 | `HDGUI_API_URL` | `http://127.0.0.1:9021`; calculation-service base URL |
-| `HD_API_TOKEN` | Explicit value takes precedence over `.hdgui-api-token`; generated and saved for a new local backend if neither is present; see [API key setup](#api-key-where-it-comes-from-required-before-first-start) |
+| `HD_API_TOKEN` | Explicit value takes precedence over `.hdgui-api-token`; generated and saved for a new local backend if neither is present; see [API key setup](#api-key-setup) |
 | `HDGUI_ENGINE_VERSION` | `4.0.2`; cache identity marker, not automatic engine detection or an image-version pin |
 | `HDGUI_SESSION_SECRET` | Random if unset; set a stable secret to retain valid form sessions across restarts |
 | `HDGUI_API_CONTAINER` | `hd-api`; automatically managed container name |
@@ -78,7 +116,8 @@ Relative SQLite and private fixture paths resolve from the working directory. Bo
 
 Keep secrets out of committed files, screenshots and logs. After an engine update, set `HDGUI_ENGINE_VERSION` to the deployed version so stored chart/activation keys change. The default Docker `latest` tag can change independently; choose a verified fixed tag/digest with `HDGUI_API_IMAGE` for reproducibility.
 
-## Startup and Docker lifecycle
+<a id="startup-docker-lifecycle"></a>
+## Startup and Docker lifecycle [startup-docker-lifecycle]
 
 ```bash
 # Loads the saved token or generates one for a new local backend.
@@ -133,7 +172,8 @@ If recreation is necessary, first inspect the container and preserve any user-ad
 
 Neither Python startup command nor either shell script performs migrations or catalog import.
 
-## Catalog imports and private fixtures
+<a id="catalog-imports"></a>
+## Catalog imports and private fixtures [catalog-imports]
 
 Catalog topology and catalog wording are separate. Import changes wording only; it cannot change gate centers, channel endpoints or circuit assignments.
 
@@ -182,7 +222,8 @@ The separate HD-entity catalog has its own partial, non-destructive text import.
 
 Import changes only listed entity names and descriptions; omitted records are retained. Human-authored descriptions cannot be replaced by another origin unless `--replace-human` is explicitly supplied. Export refuses to overwrite an existing file. Each description carries its own origin, author, model (or `unbekannt`), date and review status; keep AI-generated interpretations marked as drafts until reviewed. The catalog is displayed under **Wissen → HD-Entitäten**.
 
-## Storage, time handling and global settings
+<a id="storage-time-settings"></a>
+## Storage, time handling and global settings [storage-time-settings]
 
 ### Personal center timeline
 
@@ -198,6 +239,7 @@ A center counts as defined only through a **complete channel** in the combined g
 
 Profiles, saved SVG charts, natal activations, catalog records, UI settings and reusable transit samples reside in the configured database. Current snapshot/render caches and completed gate-forecast results remain in memory; forecasts reuse persisted transit samples for their search calculations.
 
+<a id="calculation-cache"></a>
 ### Calculation cache
 
 Transit samples used by center/gate timelines, ephemerides, series and gate-change searches are stored in `transit_samples`. The key combines the UTC second with a hash of API URL, declared engine version and cache-format version. Samples do not expire just because an hour passes or the WebUI restarts: the same ephemeris inputs are reusable. A RAM front cache holds 512 points for one hour; the database holds at most **20,000 samples across all versions**, removing the oldest inserted entries on new writes. This is a storage bound, not a time-resolution change.
@@ -214,7 +256,7 @@ Birth entry requires a local date/time, IANA timezone and place label. Nonexiste
 
 SVG and personality/design activations have separate persistent caches keyed by birth UTC, API URL and declared engine version. Birth-time changes invalidate them; name/place changes do not. Activations are calculated lazily for catalog highlights or the timeline overlay. Failed calculations do not overwrite stored results; a profile edited/deleted during natal calculation cannot receive the obsolete result.
 
-## Backup and restoration
+## Backup and restoration [backup-restoration]
 
 For the default SQLite installation, stop every WebUI process and any other process using the database before copying. The backend does not write this application database. Choose a new backup name so an earlier backup is not overwritten:
 
@@ -229,7 +271,7 @@ Preserve private catalogs/provenance separately if you need to reproduce imports
 
 To restore, stop all writers, retain the current database as a separate backup, restore the chosen snapshot to the configured location, run migrations required by the installed application, then restart. Never mix a database snapshot with stale journal/WAL sidecars. Check profile access and catalog pages after restoration. Deletion in the UI does not erase older backups.
 
-## Security and licensing
+## Security and licensing [security-licensing]
 
 - Bind to loopback and limit access to the host/account. CSRF checks, strict same-site session cookies and SVG isolation are safeguards, **not** authentication.
 - Obtain informed permission before storing another person's birth information; minimize identifying labels and agree on retention/deletion.
@@ -237,7 +279,7 @@ To restore, stop all writers, retain the current database as a separate backup, 
 - PostgreSQL is a possible SQLAlchemy backend with an appropriate driver, not a tested public multi-user deployment recipe. Authentication, ownership, authorization, HTTPS and deployment hardening remain required future work.
 - The inherited layout uses AGPL-3.0-or-later: [NOTICE](../app/data/NOTICE), [license](../app/data/LICENSE-AGPL). Independently review calculation-service licensing and the rights to any imported texts.
 
-## Troubleshooting
+## Troubleshooting [troubleshooting]
 
 | Symptom | Safe next step |
 |---|---|
@@ -252,6 +294,6 @@ To restore, stop all writers, retain the current database as a separate backup, 
 | Public texts unexpectedly replace private texts | Restore the pre-import database backup; explicitly select the intended private catalog next time |
 | Invalid form session after restart | Reload the form; use a stable `HDGUI_SESSION_SECRET` if persistence is needed |
 | Timeline temporarily returns 503 | One new sample calculation is already running; the client retries using `Retry-After` |
-| Forecast pending/missing or timeline coarse | Check backend errors and sampling limits in [Architecture](architecture.md#accuracy-and-delivered-limitations); zoom in rather than treating drawn lines as exact events |
+| Forecast pending/missing or timeline coarse | Check backend errors and sampling limits in [Architecture](../architecture/system-overview.md#accuracy-limitations); zoom in rather than treating drawn lines as exact events |
 
 Never diagnose by posting token values or full birth-profile/database dumps.
