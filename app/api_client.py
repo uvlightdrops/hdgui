@@ -1,4 +1,5 @@
 import httpx
+from threading import BoundedSemaphore
 from datetime import UTC, datetime
 from pydantic import ValidationError
 from defusedxml import ElementTree
@@ -19,6 +20,15 @@ class ChartServiceError(Exception):
 class ChartClient:
     def __init__(self, settings: Settings):
         self.settings = settings
+        self._requests = BoundedSemaphore(4)
+
+    def _get(self, *args, **kwargs):
+        if not self._requests.acquire(blocking=False):
+            raise ChartServiceError("Berechnungsdienst ausgelastet. Bitte später erneut versuchen.")
+        try:
+            return httpx.get(*args, **kwargs)
+        finally:
+            self._requests.release()
 
     def _calculate(self, timestamp: datetime, service: str) -> dict:
         """Fetch `/calculate` for a UTC instant at a zero-offset reference location."""
@@ -30,7 +40,7 @@ class ChartClient:
             "place": "Etc/UTC", "latitude": 0, "longitude": 0,
         }
         try:
-            response = httpx.get(
+            response = self._get(
                 f"{self.settings.api_url.rstrip('/')}/calculate",
                 params=params,
                 headers={"Authorization": f"Bearer {self.settings.api_token}"},
@@ -93,7 +103,7 @@ class ChartClient:
             "fmt": "svg",
         }
         try:
-            response = httpx.get(
+            response = self._get(
                 f"{self.settings.api_url.rstrip('/')}/bodygraph",
                 params=params,
                 headers={"Authorization": f"Bearer {self.settings.api_token}"},

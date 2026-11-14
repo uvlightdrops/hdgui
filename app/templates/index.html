@@ -1,5 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
+{% if multi_user %}
+<h1>{% if scope == "shared" %}Mit mir geteilt{% else %}Meine Profile{% endif %}</h1>
+<nav class="actions" aria-label="Profilbereiche">
+  <a href="/profiles?scope=owned">Meine Profile</a>
+  <a href="/profiles?scope=shared">Mit mir geteilt</a>
+  <a href="/profiles/new">Profil anlegen</a>
+</nav>
+<form method="get" action="/profiles">
+  <input type="hidden" name="scope" value="{{ scope }}">
+  <label>Profile suchen<input name="q" value="{{ q }}" maxlength="120"></label>
+  <button type="submit">Suchen</button>
+</form>
+{% endif %}
 {% if not profiles %}<p class="empty">Noch keine Profile. <a href="/profiles/new">Profil anlegen</a></p>{% endif %}
 {% if profiles %}
 <div class="current-profile" role="status">
@@ -17,12 +30,14 @@
 <div class="profiles">
 {% for profile in profiles %}
 {% set is_current = current and current.id == profile.id %}
+{% set is_owner = not multi_user or profile.owner_user_id == actor_id %}
 <article class="profile-card{% if is_current %} is-current{% endif %}" id="profile-{{ profile.id }}"{% if is_current %} aria-current="true"{% endif %}>
   {% if profile.chart_svg %}
   <img class="chart" src="/profiles/{{ profile.id }}/chart.svg" alt="Gespeicherter Human Design BodyGraph für {{ profile.name }}">
   {% endif %}
   <div class="profile-details">
   <h2>{{ profile.name }}{% if is_current %} <span class="current-badge">Aktuell</span>{% endif %}</h2>
+  {% if not is_owner %}<p>Geteiltes Profil · Nur Lesen · Eigentümerkennung {{ profile.owner_user_id }}</p>{% endif %}
   <p>{{ profile.birth_local.strftime("%d.%m.%Y, %H:%M:%S") }} · {{ profile.timezone }}</p>
   <p>{{ profile.place }}</p>
   {% if profile.chart_svg %}
@@ -40,7 +55,7 @@
     <p><strong>Definierte Zentren:</strong> {% for center in natal.centers %}{{ center.label }}{% if not loop.last %}, {% endif %}{% else %}keine{% endfor %}</p>
   </details>
   {% else %}
-  <p class="profile-muted">Aktivierungen noch nicht berechnet; das Overlay im Gate-Verlauf berechnet sie bei Bedarf.</p>
+  <p class="profile-muted">Aktivierungen noch nicht berechnet oder veraltet. {% if is_owner %}Das Overlay berechnet sie bei Bedarf.{% else %}Der Eigentümer muss sie berechnen.{% endif %}</p>
   {% endif %}
   <div class="actions">
     {% if is_current %}
@@ -54,7 +69,9 @@
       <button class="link-button" type="submit" aria-label="{{ profile.name }} als aktuell setzen">Als aktuell setzen</button>
     </form>
     {% endif %}
+    {% if is_owner %}
     <a href="/profiles/{{ profile.id }}/edit">Bearbeiten</a>
+    {% if multi_user %}<a href="/profiles/{{ profile.id }}/sharing">Teilen</a>{% endif %}
     <form method="post" action="/profiles/{{ profile.id }}/chart">
       <input type="hidden" name="csrf" value="{{ csrf }}">
       <button type="submit">Chart öffnen / berechnen</button>
@@ -70,9 +87,22 @@
       <input type="hidden" name="csrf" value="{{ csrf }}">
       <button class="danger" type="submit">Profil und Chart löschen</button>
     </form>
+    {% else %}
+    {% if profile.chart_svg %}<a href="/profiles/{{ profile.id }}/chart">Gespeichertes Chart ansehen</a>{% endif %}
+    <form method="post" action="/profiles/{{ profile.id }}/sharing/remove">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit">Freigabe entfernen</button>
+    </form>
+    {% endif %}
   </div>
   </div>
 </article>
 {% endfor %}
 </div>
+{% if multi_user %}
+<nav class="actions" aria-label="Profilseiten">
+  {% if page > 1 %}<a href="/profiles?scope={{ scope }}&amp;q={{ q | urlencode }}&amp;page={{ page - 1 }}">Vorherige Seite</a>{% endif %}
+  {% if has_next %}<a href="/profiles?scope={{ scope }}&amp;q={{ q | urlencode }}&amp;page={{ page + 1 }}">Nächste Seite</a>{% endif %}
+</nav>
+{% endif %}
 {% endblock %}

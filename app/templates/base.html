@@ -26,6 +26,14 @@
     <a href="/experiments/ephemeris" {% if request.url.path == "/experiments/ephemeris" %}aria-current="page"{% endif %}>Ephemeriden</a>
     <a href="/experiments/series" {% if request.url.path == "/experiments/series" %}aria-current="page"{% endif %}>Zeitreihe</a>
     <a href="/settings" {% if request.url.path == "/settings" %}aria-current="page"{% endif %}>Settings</a>
+    {% if request.app.state.account_service %}
+    <a href="/contacts" {% if request.url.path.startswith("/contacts") %}aria-current="page"{% endif %}>Kontakte</a>
+    <a href="/account">Mein Konto</a>
+    <form method="post" action="/auth/logout">
+      <input type="hidden" name="csrf" value="{{ request.state.csrf }}">
+      <button type="submit">Abmelden</button>
+    </form>
+    {% endif %}
   </nav>
   <div class="page">
   <main>{% if knowledge_navigation %}{% include "knowledge_navigation.html" %}{% endif %}{% block content %}{% endblock %}</main>

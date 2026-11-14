@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Kontakte</h1>
+<form method="post" action="/contacts">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>Kontakt per E-Mail hinzufügen<input type="email" name="email" required maxlength="254"></label>
+  <p>Die Anfrage wird per E-Mail angekündigt. Erst die Annahme stellt einen Kontakt her; Profile werden dabei nicht freigegeben.</p>
+  <button type="submit">Kontaktanfrage senden</button>
+</form>
+<h2>Eingehende Anfragen</h2>
+{% for item in incoming %}
+<article>
+  <p>{{ names[item.requester_user_id] }}</p>
+  {% for action, label in [("accept", "Annehmen"), ("decline", "Ablehnen")] %}
+  <form method="post" action="/contacts/requests/{{ item.id }}/{{ action }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">{{ label }}</button>
+  </form>
+  {% endfor %}
+</article>
+{% else %}<p>Keine offenen Anfragen.</p>{% endfor %}
+<h2>Gesendete Anfragen</h2>
+{% for item in outgoing %}
+<p>{{ item.target_email_key }}</p>
+<form method="post" action="/contacts/requests/{{ item.id }}/cancel">
+  <input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Zurückziehen</button>
+</form>
+{% else %}<p>Keine offenen Anfragen.</p>{% endfor %}
+<h2>Bestätigte Kontakte</h2>
+{% for user in contacts %}
+<p>{{ user.display_name or user.email }}</p>
+<form method="post" action="/contacts/{{ user.id }}/remove">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <p>Entfernen widerruft alle gegenseitigen Profilfreigaben.</p>
+  <button class="danger" type="submit">Kontakt entfernen</button>
+</form>
+{% else %}<p>Noch keine bestätigten Kontakte.</p>{% endfor %}
+<nav class="actions" aria-label="Kontaktseiten">
+  {% if page > 1 %}<a href="/contacts?page={{ page - 1 }}">Vorherige Seite</a>{% endif %}
+  {% if incoming | length == 25 or outgoing | length == 25 or contacts | length == 25 %}<a href="/contacts?page={{ page + 1 }}">Nächste Seite</a>{% endif %}
+</nav>
+{% endblock %}

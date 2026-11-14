@@ -187,7 +187,7 @@ def experiment_router(client, templates, current_profile=lambda: None, descripti
 
     @router.get("/gate-walk")
     def gate_walk(request: Request):
-        catalog = descriptions()
+        catalog = descriptions(request)
         return templates.TemplateResponse(
             request=request, name="gate_walk.html",
             context={"graph": render_gate_walk(catalog), "zodiac": render_walk_zodiac(catalog),
@@ -256,7 +256,7 @@ def experiment_router(client, templates, current_profile=lambda: None, descripti
             request=request, name="timeline.html" if page == "gate-plot" else "experiment.html",
             context={"page": page, "title": title, "description": description,
                      "gate_order": GATES,
-                     "current_profile": current_profile() if page == "gate-plot" else None,
+                     "current_profile": current_profile(request) if page == "gate-plot" else None,
                      "start": datetime.now(UTC).strftime("%Y-%m-%dT%H:00")},
         )
 

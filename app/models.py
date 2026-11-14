@@ -1,9 +1,10 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint,
+    Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text,
+    UniqueConstraint, text,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, synonym
 
 
 class Base(DeclarativeBase):
@@ -98,6 +99,10 @@ class BirthProfile(Base):
     chart_key: Mapped[str] = mapped_column(String(64))
     chart_svg: Mapped[str | None] = mapped_column(Text)
     chart_generated_at: Mapped[datetime | None] = mapped_column(DateTime)
+    owner_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", name="fk_birth_profile_owner", ondelete="RESTRICT"),
+        nullable=True, index=True,
+    )
     # Activation cache metadata, independent from the SVG cache.
     activation_key: Mapped[str | None] = mapped_column(String(64))
     activation_engine_version: Mapped[str | None] = mapped_column(String(64))
@@ -238,3 +243,180 @@ class BirthChart(Base):
     raw_response: Mapped[dict] = mapped_column(JSON, nullable=False)
 
     profile: Mapped[BirthProfile] = relationship(back_populates="birth_chart")
+
+
+class User(Base):
+    __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'disabled')", name="ck_user_status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    email_key: Mapped[str] = mapped_column(String(254), nullable=False, unique=True)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime)
+    display_name: Mapped[str | None] = mapped_column(String(120))
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class LoginToken(Base):
+    __tablename__ = "login_tokens"
+    __table_args__ = (
+        CheckConstraint(
+            "purpose IN ('login', 'email_change', 'account_delete')", name="ck_login_token_purpose",
+        ),
+        Index("ix_login_tokens_email_created", "email_key", "created_at"),
+        Index("ix_login_tokens_ip_created", "requester_ip_digest", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    token_digest: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    email_key: Mapped[str] = mapped_column(String(254), nullable=False)
+    email_delivery: Mapped[str] = mapped_column(String(254), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(20), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    requester_ip_digest: Mapped[str | None] = mapped_column(String(64))
+    actor_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"),
+    )
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+    __table_args__ = (
+        Index("ix_auth_sessions_user", "user_id"),
+        Index("ix_auth_sessions_expiry", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_digest: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    idle_expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class ContactRequest(Base):
+    __tablename__ = "contact_requests"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'accepted', 'declined', 'cancelled', 'expired')",
+            name="ck_contact_request_status",
+        ),
+        CheckConstraint(
+            "user_low_id IS NULL OR user_high_id IS NULL OR user_low_id < user_high_id",
+            name="ck_contact_request_ordered_pair",
+        ),
+        Index(
+            "uq_contact_request_active_pair", "user_low_id", "user_high_id",
+            unique=True, sqlite_where=text("status = 'pending'"),
+            postgresql_where=text("status = 'pending'"),
+        ),
+        Index(
+            "uq_contact_request_pending_email", "requester_user_id", "target_email_key",
+            unique=True, sqlite_where=text("status = 'pending'"),
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    requester_user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+    )
+    target_email_key: Mapped[str] = mapped_column(String(254), nullable=False)
+    target_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"),
+    )
+    user_low_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"),
+    )
+    user_high_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"),
+    )
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="pending")
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class Contact(Base):
+    __tablename__ = "contacts"
+    __table_args__ = (
+        CheckConstraint("user_low_id < user_high_id", name="ck_contact_ordered_pair"),
+    )
+
+    user_low_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True,
+    )
+    user_high_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True,
+    )
+    accepted_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class ProfileShare(Base):
+    __tablename__ = "profile_shares"
+    __table_args__ = (
+        UniqueConstraint("profile_id", "recipient_user_id", name="uq_profile_share_recipient"),
+        CheckConstraint("granting_owner_id != recipient_user_id", name="ck_profile_share_not_owner"),
+        Index("ix_profile_shares_recipient", "recipient_user_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    profile_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("birth_profiles.id", ondelete="CASCADE"), nullable=False,
+    )
+    recipient_user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+    )
+    granting_owner_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class UserPreferences(Base):
+    __tablename__ = "user_preferences"
+
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True,
+    )
+    current_profile_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("birth_profiles.id", ondelete="SET NULL"),
+    )
+    active_profile_id = synonym("current_profile_id")
+    locale: Mapped[str | None] = mapped_column(String(35))
+    catalog_locale = synonym("locale")
+    autoreload: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    cache_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=300)
+    center_timeline_samples: Mapped[int] = mapped_column(Integer, nullable=False, default=64)
+
+
+class SecurityEvent(Base):
+    __tablename__ = "security_events"
+    __table_args__ = (
+        Index("ix_security_events_actor_time", "actor_user_id", "occurred_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    actor_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"),
+    )
+    action: Mapped[str] = mapped_column(String(40), nullable=False)
+    target_id: Mapped[str | None] = mapped_column(String(100))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    outcome: Mapped[str] = mapped_column(String(20), nullable=False)
+
+
+class RateLimitBucket(Base):
+    __tablename__ = "rate_limit_buckets"
+
+    key: Mapped[str] = mapped_column(String(140), primary_key=True)
+    window_started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    count: Mapped[int] = mapped_column(Integer, nullable=False)

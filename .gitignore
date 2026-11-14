@@ -19,3 +19,6 @@ test_*
 !/tests/test_center_timeline.js
 !/tests/test_hd_catalog.py
 !/tests/test_knowledge.py
+!/tests/test_multi_user.py
+!/tests/test_uberspace.py
+!/tests/test_accounts.py

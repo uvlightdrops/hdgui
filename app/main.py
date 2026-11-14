@@ -1,4 +1,6 @@
 import secrets
+import os
+from urllib.parse import urlsplit
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -10,7 +12,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import select, update
+from sqlalchemy import select, update, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 from starlette.middleware.sessions import SessionMiddleware
@@ -52,17 +54,51 @@ class SettingsInput(BaseModel):
     catalog_locale: Literal["", "de", "en"] = ""
 
 
-def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
+def create_app(settings: Settings | None = None, chart_client=None, *, accounts_config=None, mailer=None) -> FastAPI:
     settings = settings or Settings()
     engine, sessions = make_database(settings.database_url)
     templates = Jinja2Templates(directory=ROOT / "templates")
     validate_mapping()
     templates.env.globals["knowledge_url"] = knowledge_url
+    multi_user = accounts_config.enabled if accounts_config is not None else os.getenv("HDGUI_MULTI_USER", "").lower() in ("1", "true", "yes")
+    accounts = None
+    if multi_user:
+        from app import accounts as account_api
+        from app.accounts import AccountsConfig, AccountService
+        accounts = AccountService(sessions, accounts_config or AccountsConfig.from_env(), mailer=mailer)
+        api_url = urlsplit(settings.api_url)
+        if (api_url.scheme != "https" or not api_url.hostname or api_url.username
+                or api_url.password or api_url.query or api_url.fragment):
+            raise ValueError("Mehrbenutzerbetrieb benötigt eine fest konfigurierte HTTPS-Berechnungs-API.")
+        if chart_client is None and not settings.api_token:
+            raise ValueError("Mehrbenutzerbetrieb benötigt HD_API_TOKEN für die externe Berechnungs-API.")
 
-    def descriptions():
+    def actor(request):
+        if not accounts:
+            return None
+        current = accounts.authenticate(request.cookies.get(accounts.config.session_cookie_name))
+        if current is None:
+            raise HTTPException(401, "Anmeldung erforderlich.")
+        return current
+
+    def get_preferences(session, request=None):
+        if accounts:
+            return account_api.preferences(session, actor(request))
+        preferences = session.get(UiSettings, 1)
+        if preferences is None:
+            raise HTTPException(500, "Einstellungen fehlen. Bitte Alembic-Migrationen ausführen.")
+        return preferences
+
+    def request_locale(session, request=None):
+        if accounts and request is not None:
+            from app.knowledge_catalog import negotiate_locale
+            return get_preferences(session, request).catalog_locale or negotiate_locale(request.headers.get("accept-language"))
+        return effective_locale(session, request.headers.get("accept-language") if request else None)
+
+    def descriptions(request=None):
         with sessions() as session:
             try:
-                return gate_descriptions(session, effective_locale(session))
+                return gate_descriptions(session, request_locale(session, request))
             except CatalogMissing as exc:
                 raise HTTPException(500, str(exc)) from exc
             except SQLAlchemyError as exc:
@@ -74,7 +110,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     samples = SampleCache(client, sessions, settings)
     transit_cache = TransitCache(client, descriptions)
     forecasts = GateForecastService(samples)
-    natal = NatalService(sessions, client, settings)
+    natal = NatalService(sessions, client, settings, require_authorization=multi_user)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -85,15 +121,85 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     app = FastAPI(title="HDGUI", lifespan=lifespan)
     app.add_middleware(SessionMiddleware, secret_key=settings.session_secret, same_site="strict")
     app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
+    app.state.account_service = accounts
+    if accounts:
+        app.include_router(account_api.create_auth_router(accounts))
+        from app.sharing import sharing_router
+        app.include_router(sharing_router(accounts, templates, actor, token=lambda request: token(request),
+                                          check_csrf=lambda request, form: check_csrf(request, form)))
 
-    def current_profile():
+        @app.middleware("http")
+        async def private_application(request: Request, call_next):
+            from starlette.concurrency import run_in_threadpool
+            path = request.url.path
+            if request.method == "POST":
+                body = await request.body()
+                if len(body) > 65536:
+                    return JSONResponse({"detail": "Anfrage zu groß."}, status_code=413)
+            public = path in ("/auth/login", "/auth/confirm") or path.startswith("/static/")
+            if not public:
+                current = await run_in_threadpool(
+                    accounts.authenticate, request.cookies.get(accounts.config.session_cookie_name),
+                )
+                if current is None:
+                    if request.method == "GET" and "text/html" in request.headers.get("accept", ""):
+                        return RedirectResponse("/auth/login", status_code=303)
+                    return JSONResponse({"detail": "Anmeldung erforderlich."}, status_code=401)
+                request.state.actor = current
+                if not path.startswith("/auth/"):
+                    from sqlalchemy import func
+                    with sessions() as session:
+                        unowned = session.scalar(select(func.count()).select_from(BirthProfile).where(BirthProfile.owner_user_id.is_(None)))
+                    if unowned:
+                        return JSONResponse({"detail": "Bestehende Profile zuerst ausdrücklich einem verifizierten Erstbesitzer zuordnen."}, status_code=503)
+                expensive = path in ("/", "/transit", "/transit/next-gates", "/experiments/frame", "/experiments/data", "/centers/frame", "/profiles/current/overlay")
+                expensive = expensive or (request.method == "POST" and path.endswith(("/chart", "/analysis")))
+                if expensive:
+                    cost = 1
+                    if path == "/experiments/data":
+                        days = request.query_params.get("days", "1")
+                        cost = {"1": 25, "7": 29, "30": 31}.get(days, 31)
+                    allowed = await run_in_threadpool(
+                        accounts.check_rate_limit, current, "calculations", 300, 3600,
+                        cost=cost, global_limit=3000,
+                    )
+                    if not allowed:
+                        return JSONResponse({"detail": "Berechnungsbudget erschöpft. Bitte später erneut versuchen."},
+                                            status_code=429, headers={"Retry-After": "3600"})
+            request.state.csrf = request.cookies.get("hdgui_csrf") or secrets.token_urlsafe(32)
+            request.state.read_profiles = set()
+            response = await call_next(request)
+            if not public and not path.startswith("/auth/") and request.method == "GET":
+                latest = await run_in_threadpool(
+                    accounts.authenticate, request.cookies.get(accounts.config.session_cookie_name),
+                )
+                if latest is None:
+                    return JSONResponse({"detail": "Anmeldung nicht mehr gültig."}, status_code=401)
+                try:
+                    with sessions() as session:
+                        for key in request.state.read_profiles:
+                            account_api.readable_profile(session, latest, key)
+                except HTTPException as exc:
+                    return JSONResponse({"detail": "Profil nicht mehr verfügbar."}, status_code=exc.status_code)
+            if not request.cookies.get("hdgui_csrf") and not path.startswith("/auth/"):
+                response.set_cookie("hdgui_csrf", request.state.csrf, secure=accounts.config.secure_cookie,
+                                    httponly=False, samesite="lax", max_age=86400)
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Referrer-Policy"] = "no-referrer"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            return response
+
+        from app.http_limits import RequestSizeLimit
+        app.add_middleware(RequestSizeLimit, max_bytes=65536)
+
+    def current_profile(request=None):
         # Database only: selecting or showing the current profile never calls the API.
         try:
             with sessions() as session:
-                preferences = session.get(UiSettings, 1)
+                preferences = get_preferences(session, request)
                 if preferences is None or preferences.active_profile_id is None:
                     return None
-                profile = session.get(BirthProfile, preferences.active_profile_id)
+                profile = get_profile(session, preferences.active_profile_id, request)
                 return None if profile is None else {"id": profile.id, "name": profile.name}
         except SQLAlchemyError:
             # The overlay is optional; the transit timeline stays usable without profiles.
@@ -102,6 +208,9 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     app.include_router(experiment_router(client, templates, current_profile, descriptions, samples))
     app.include_router(center_timeline_router(
         templates, current_profile, descriptions, natal, sessions, samples,
+        preferences=get_preferences,
+        authorize=(lambda session, profile_id, request: get_profile(session, profile_id, request)) if accounts else None,
+        natal_options=lambda request, profile_id: natal_access(request, profile_id),
     ))
 
     @app.get("/knowledge")
@@ -126,7 +235,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
             if entity is not None and entity not in dict(entries):
                 raise HTTPException(404, "Eintrag gehört nicht zu dieser Kategorie.")
             context["entry_links"] = entries
-            context["current_profile"] = current_profile() if category == "gate" else None
+            context["current_profile"] = current_profile(request) if category == "gate" else None
             template = "gates.html" if category == "gate" else "channels.html"
         else:
             try:
@@ -134,7 +243,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                     records = sorted(session.scalars(
                         select(HdEntity).where(HdEntity.category == category),
                     ).all(), key=entity_order)
-                    locale = effective_locale(session, request.headers.get("accept-language"))
+                    locale = request_locale(session, request)
                     texts = resolve_texts(session, [row.id for row in records], locale)
                     entities = [localized_record(row, texts.get(row.id)) for row in records]
                     context["catalog_locale"] = locale
@@ -179,7 +288,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         )
         try:
             with sessions() as session:
-                locale = effective_locale(session, request.headers.get("accept-language"))
+                locale = request_locale(session, request)
                 texts = resolve_texts(session, body_ids, locale, "astrology-symbolism")
                 bodies = [
                     {
@@ -213,7 +322,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                 records = sorted(session.scalars(
                     select(HdEntity).where(HdEntity.category == category),
                 ).all(), key=entity_order)
-                locale = effective_locale(session, request.headers.get("accept-language"))
+                locale = request_locale(session, request)
                 texts = resolve_texts(session, [entity.id for entity in records], locale)
                 entities = [
                     localized_record(entity, texts.get(entity.id))
@@ -236,7 +345,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                 circuits = session.scalars(select(Circuit).order_by(Circuit.id)).all()
                 gates = session.scalars(select(Gate).order_by(Gate.number)).all()
                 channels = session.scalars(select(Channel).order_by(Channel.gate_a, Channel.gate_b)).all()
-                locale = effective_locale(session, request.headers.get("accept-language"))
+                locale = request_locale(session, request)
                 ids = (
                     [f"circuit.{circuit.id}" for circuit in circuits]
                     + [f"gate.{gate.number}" for gate in gates]
@@ -283,7 +392,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     def gates_page(request: Request):
         return templates.TemplateResponse(
             request=request, name="gates.html",
-            context={**catalog_context(request), "current_profile": current_profile(), **navigation(category="gate")},
+            context={**catalog_context(request), "current_profile": current_profile(request), **navigation(category="gate")},
             headers={"Cache-Control": "no-store"},
         )
 
@@ -294,21 +403,42 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         )
 
     def token(request):
+        if accounts:
+            return request.state.csrf
         if "csrf" not in request.session:
             request.session["csrf"] = secrets.token_urlsafe(32)
         return request.session["csrf"]
 
     def check_csrf(request, form):
+        if accounts:
+            if not account_api.csrf_valid(request, str(form.get("csrf", ""))):
+                raise HTTPException(403, "Ungültige Formularsitzung. Bitte die Seite neu laden.")
+            return
         supplied = str(form.get("csrf", ""))
         expected = request.session.get("csrf")
         if not expected or not secrets.compare_digest(supplied, expected):
             raise HTTPException(403, "Ungültige Formularsitzung. Bitte die Seite neu laden.")
 
-    def get_profile(session, profile_id):
+    def get_profile(session, profile_id, request=None, *, write=False):
+        if accounts:
+            if not write:
+                request.state.read_profiles.add(profile_id)
+            return account_api.owned_profile(session, actor(request), profile_id) if write else account_api.readable_profile(session, actor(request), profile_id)
         profile = session.get(BirthProfile, profile_id)
         if profile is None:
             raise HTTPException(404, "Profil nicht gefunden.")
         return profile
+
+    def natal_access(request, profile_id, *, write=False):
+        if not accounts:
+            return {}
+        with sessions() as session:
+            profile = get_profile(session, profile_id, request, write=write)
+            owns = profile.owner_user_id == actor(request).id
+        return {
+            "authorize": lambda session, key: get_profile(session, key, request, write=write or owns),
+            "allow_compute": owns,
+        }
 
     def form_page(request, values=None, profile_id=None, errors=None, status=200):
         return templates.TemplateResponse(
@@ -321,36 +451,43 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     @app.get("/")
     def index(request: Request):
         with sessions() as session:
-            preferences = session.get(UiSettings, 1)
+            preferences = get_preferences(session, request)
             if preferences is None:
                 raise HTTPException(500, "Einstellungen fehlen. Bitte Alembic-Migrationen ausführen.")
         try:
-            frame, _ = transit_cache.get(preferences.cache_seconds)
+            catalog = descriptions(request)
+            frame, _ = transit_cache.get(preferences.cache_seconds, catalog)
         except ChartServiceError as exc:
             raise HTTPException(502, str(exc)) from exc
         return templates.TemplateResponse(
             request=request, name="home.html",
-            context={"frame": frame, "bodygraph": transit_cache.bodygraph(frame),
+            context={"frame": frame, "bodygraph": transit_cache.bodygraph(frame, catalog),
                      "autoreload": preferences.autoreload, "reload_seconds": preferences.cache_seconds},
             headers={"Cache-Control": "no-store"},
         )
 
-    def get_preferences(session):
-        preferences = session.get(UiSettings, 1)
-        if preferences is None:
-            raise HTTPException(500, "Einstellungen fehlen. Bitte Alembic-Migrationen ausführen.")
-        return preferences
-
     @app.get("/profiles")
-    def profiles_page(request: Request):
+    def profiles_page(request: Request, page: int = 1, q: str = "", scope: str = "owned"):
+        if page < 1 or len(q) > 120 or scope not in ("owned", "shared"):
+            raise HTTPException(422, "Ungültige Profilsuche.")
         with sessions() as session:
-            profiles = session.scalars(
-                select(BirthProfile).options(
+            query = select(BirthProfile).options(
                     selectinload(BirthProfile.activations), selectinload(BirthProfile.birth_chart),
-                )
-                .order_by(BirthProfile.name, BirthProfile.id)
-            ).all()
-            current_id = get_preferences(session).active_profile_id
+                ).order_by(BirthProfile.name, BirthProfile.id)
+            if accounts:
+                current_actor = actor(request)
+                query = query.where(account_api.profile_scope(current_actor, shared=scope == "shared"))
+                if scope == "shared":
+                    query = query.where(BirthProfile.owner_user_id != current_actor.id)
+                if q:
+                    query = query.where(BirthProfile.name.contains(q, autoescape=True))
+                query = query.offset((page - 1) * 25).limit(26)
+            profiles = session.scalars(query).all()
+            has_next = accounts is not None and len(profiles) > 25
+            if accounts:
+                profiles = profiles[:25]
+                request.state.read_profiles.update(profile.id for profile in profiles)
+            current_id = get_preferences(session, request).active_profile_id
             activations = {}
             chart_status = {}
             topology = None
@@ -372,6 +509,8 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         return templates.TemplateResponse(
             request=request, name="index.html",
             context={"profiles": profiles, "csrf": token(request), "current": current,
+                     "multi_user": multi_user, "actor_id": actor(request).id if accounts else None,
+                     "scope": scope, "page": page, "q": q, "has_next": has_next,
                      "activations": activations, "source_labels": SOURCE_LABELS,
                      "body_labels": BODY_LABELS, "chart_status": chart_status},
         )
@@ -381,7 +520,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         form = await request.form()
         check_csrf(request, form)
         with sessions.begin() as session:
-            get_preferences(session).active_profile_id = None
+            get_preferences(session, request).active_profile_id = None
         return RedirectResponse("/profiles", status_code=303)
 
     @app.post("/profiles/{profile_id}/current")
@@ -389,21 +528,23 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         form = await request.form()
         check_csrf(request, form)
         with sessions.begin() as session:
-            get_profile(session, profile_id)
-            get_preferences(session).active_profile_id = profile_id
+            get_profile(session, profile_id, request)
+            get_preferences(session, request).active_profile_id = profile_id
         return RedirectResponse(f"/profiles#profile-{profile_id}", status_code=303)
 
     @app.get("/profiles/current/overlay")
-    def current_overlay():
+    def current_overlay(request: Request):
         # Sync route: FastAPI runs the potentially blocking API call in a worker thread.
         headers = {"Cache-Control": "no-store"}
         with sessions() as session:
-            profile_id = get_preferences(session).active_profile_id
+            profile_id = get_preferences(session, request).active_profile_id
         if profile_id is None:
             return JSONResponse({"profile": None, "detail": "Kein aktuelles Geburtsprofil ausgewählt."},
                                 headers=headers)
         try:
-            return JSONResponse(natal.activations(profile_id), headers=headers)
+            return JSONResponse(natal.activations(profile_id, **natal_access(request, profile_id)), headers=headers)
+        except ChartUnavailable as exc:
+            return JSONResponse({"detail": str(exc)}, status_code=409, headers=headers)
         except ProfileChanged as exc:
             return JSONResponse({"detail": f"{exc} Bitte erneut versuchen."}, status_code=409,
                                 headers=headers)
@@ -418,10 +559,11 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
             )
 
     @app.get("/profiles/{profile_id}/analysis")
-    def stored_analysis(profile_id: str):
+    def stored_analysis(request: Request, profile_id: str):
         headers = {"Cache-Control": "no-store"}
         try:
-            return JSONResponse(natal.stored_chart(profile_id), headers=headers)
+            options = natal_access(request, profile_id)
+            return JSONResponse(natal.stored_chart(profile_id, authorize=options.get("authorize")), headers=headers)
         except ChartUnavailable as exc:
             return JSONResponse({"detail": str(exc)}, status_code=404, headers=headers)
         except ProfileChanged as exc:
@@ -439,9 +581,10 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         from starlette.concurrency import run_in_threadpool
         try:
             with sessions() as session:
-                get_profile(session, profile_id)
+                get_profile(session, profile_id, request, write=True)
             await run_in_threadpool(
                 natal.activations, profile_id, require_details=True, refresh=form.get("refresh") == "1",
+                **natal_access(request, profile_id, write=True),
             )
         except ProfileChanged as exc:
             raise HTTPException(409, str(exc)) from exc
@@ -458,14 +601,14 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     @app.get("/transit")
     def transit(request: Request):
         with sessions() as session:
-            preferences = session.get(UiSettings, 1)
+            preferences = get_preferences(session, request)
             if preferences is None:
                 raise HTTPException(500, "Einstellungen fehlen. Bitte Alembic-Migrationen ausführen.")
         try:
-            frame, wheel = transit_cache.get(preferences.cache_seconds)
+            catalog = descriptions(request)
+            frame, wheel = transit_cache.get(preferences.cache_seconds, catalog)
         except ChartServiceError as exc:
             raise HTTPException(502, str(exc)) from exc
-        catalog = descriptions()
         return templates.TemplateResponse(
             request=request, name="transit.html",
             context={"frame": frame, "wheel": wheel, "autoreload": preferences.autoreload,
@@ -475,13 +618,13 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         )
 
     @app.get("/transit/next-gates")
-    def next_gates():
+    def next_gates(request: Request):
         with sessions() as session:
-            preferences = session.get(UiSettings, 1)
+            preferences = get_preferences(session, request)
             if preferences is None:
                 raise HTTPException(500, "Einstellungen fehlen. Bitte Alembic-Migrationen ausführen.")
         try:
-            frame, _ = transit_cache.get(preferences.cache_seconds)
+            frame, _ = transit_cache.get(preferences.cache_seconds, descriptions(request))
         except ChartServiceError as exc:
             raise HTTPException(502, str(exc)) from exc
         from fastapi.responses import JSONResponse
@@ -499,7 +642,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     @app.get("/settings")
     def show_settings(request: Request):
         with sessions() as session:
-            preferences = session.get(UiSettings, 1)
+            preferences = get_preferences(session, request)
             if preferences is None:
                 raise HTTPException(500, "Einstellungen fehlen. Bitte Alembic-Migrationen ausführen.")
             values = {
@@ -510,20 +653,28 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
             }
         return settings_page(request, values)
 
+    @app.get("/account")
+    def account_page(request: Request):
+        if not accounts:
+            raise HTTPException(404, "Kontofunktionen sind nicht aktiviert.")
+        return templates.TemplateResponse(request=request, name="account.html", context={
+            "email": actor(request).email, "csrf": token(request),
+        })
+
     @app.post("/settings")
     async def save_settings(request: Request):
         form = await request.form()
         check_csrf(request, form)
         raw_seconds = str(form.get("cache_seconds", ""))
         with sessions() as session:
-            preferences = session.get(UiSettings, 1)
+            preferences = get_preferences(session, request)
             if preferences is None:
                 raise HTTPException(500, "Einstellungen fehlen. Bitte Alembic-Migrationen ausführen.")
             current_samples = preferences.center_timeline_samples
         raw_samples = str(form.get("center_timeline_samples", current_samples))
         values = {
             "cache_seconds": int(raw_seconds) if raw_seconds in {str(v) for v, _ in CACHE_OPTIONS} else 0,
-            "autoreload": form.get("autoreload", ""),
+            "autoreload": form.get("autoreload", "") in ("on", "true", "1"),
             "center_timeline_samples": int(raw_samples)
             if raw_samples in {str(v) for v, _ in TIMELINE_SAMPLE_OPTIONS} else 0,
             "catalog_locale": str(form.get("catalog_locale", "")),
@@ -533,7 +684,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         except ValidationError:
             return settings_page(request, values, ["Bitte gültige Einstellungen auswählen."], 422)
         with sessions.begin() as session:
-            preferences = session.get(UiSettings, 1)
+            preferences = get_preferences(session, request)
             if preferences is None:
                 raise HTTPException(500, "Einstellungen fehlen. Bitte Alembic-Migrationen ausführen.")
             preferences.cache_seconds = data.cache_seconds
@@ -545,7 +696,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     @app.get("/profiles/{profile_id}/edit")
     def edit(request: Request, profile_id: str):
         with sessions() as session:
-            profile = get_profile(session, profile_id)
+            profile = get_profile(session, profile_id, request, write=True)
             values = {key: getattr(profile, key) for key in (
                 "name", "birth_local", "timezone", "place"
             )}
@@ -555,6 +706,9 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     async def save(request, profile_id=None):
         form = await request.form()
         check_csrf(request, form)
+        if profile_id is not None:
+            with sessions() as session:
+                get_profile(session, profile_id, request, write=True)
         values = {key: form.get(key, "") for key in ("name", "birth_local", "timezone", "place")}
         try:
             data = ProfileInput.model_validate(values)
@@ -566,7 +720,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         natal_key = activation_key(utc, settings.api_url, settings.engine_version)
         with sessions.begin() as session:
             if profile_id:
-                profile = get_profile(session, profile_id)
+                profile = get_profile(session, profile_id, request, write=True)
                 if profile.chart_key != key:
                     profile.chart_svg = None
                     profile.chart_generated_at = None
@@ -579,7 +733,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                 elif profile.birth_chart is not None and profile.birth_chart.calculation_key != natal_key:
                     profile.birth_chart = None
             else:
-                profile = BirthProfile(id=str(uuid4()))
+                profile = BirthProfile(id=str(uuid4()), owner_user_id=actor(request).id if accounts else None)
                 session.add(profile)
             for field in ("name", "birth_local", "timezone", "place"):
                 setattr(profile, field, getattr(data, field))
@@ -600,8 +754,8 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         form = await request.form()
         check_csrf(request, form)
         with sessions.begin() as session:
-            profile = get_profile(session, profile_id)
-            preferences = get_preferences(session)
+            profile = get_profile(session, profile_id, request, write=True)
+            preferences = get_preferences(session, request)
             if preferences.active_profile_id == profile_id:
                 preferences.active_profile_id = None
                 session.flush()
@@ -614,11 +768,11 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         check_csrf(request, form)
         # Blocking HTTP and database work belongs in a worker, not the event loop.
         from starlette.concurrency import run_in_threadpool
-        return await run_in_threadpool(generate_chart, profile_id, form.get("refresh") == "1")
+        return await run_in_threadpool(generate_chart, request, profile_id, form.get("refresh") == "1")
 
-    def generate_chart(profile_id, refresh):
+    def generate_chart(request, profile_id, refresh):
         with sessions() as session:
-            profile = get_profile(session, profile_id)
+            profile = get_profile(session, profile_id, request, write=True)
         old_key = profile.chart_key
         key = chart_key(profile.birth_utc, settings.api_url, settings.engine_version)
         if refresh or not profile.chart_svg or old_key != key:
@@ -627,6 +781,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
             except ChartServiceError as exc:
                 raise HTTPException(502, str(exc)) from exc
             with sessions.begin() as session:
+                get_profile(session, profile_id, request, write=True)
                 result = session.execute(
                     update(BirthProfile)
                     .where(BirthProfile.id == profile_id, BirthProfile.chart_key == old_key)
@@ -640,6 +795,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     @app.get("/profiles/{profile_id}/chart")
     def chart_page(request: Request, profile_id: str):
         with sessions() as session:
+            get_profile(session, profile_id, request)
             profile = session.get(
                 BirthProfile, profile_id, options=[
                     selectinload(BirthProfile.activations), selectinload(BirthProfile.birth_chart),
@@ -668,7 +824,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                         select(HdEntity).where(HdEntity.id.in_(set(chart.catalog_links.values()))),
                     )
                 }
-                locale = effective_locale(session, request.headers.get("accept-language"))
+                locale = request_locale(session, request)
                 catalog_locale = locale
                 texts = resolve_texts(session, set(records), locale)
                 entities = {
@@ -719,14 +875,15 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                 "analysis_stale": chart is not None and not chart_is_current,
                 "analysis_calculated_at": calculated_at,
                 "catalog_locale": catalog_locale,
+                "is_owner": not accounts or profile.owner_user_id == actor(request).id,
             },
             headers={"Cache-Control": "no-store"},
         )
 
     @app.get("/profiles/{profile_id}/chart.svg")
-    def svg(profile_id: str):
+    def svg(request: Request, profile_id: str):
         with sessions() as session:
-            profile = get_profile(session, profile_id)
+            profile = get_profile(session, profile_id, request)
         key = chart_key(profile.birth_utc, settings.api_url, settings.engine_version)
         if not profile.chart_svg or profile.chart_key != key:
             raise HTTPException(404, "Kein aktuelles Chart gespeichert. Bitte berechnen.")

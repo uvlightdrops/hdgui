@@ -49,6 +49,10 @@ def _check_frontend_address(params) -> None:
 def _run(no_api, api_timeout, **uvicorn_params):
     _check_frontend_address(uvicorn_params)
     load_saved_token(os.environ)
+    if os.getenv("HDGUI_MULTI_USER", "").lower() in ("1", "true", "yes"):
+        no_api = True
+        # Email-confirmation URLs temporarily contain bearer tokens.
+        uvicorn_params["access_log"] = False
     if not no_api:
         ensure_backend(api_timeout)
     return click.get_current_context().invoke(uvicorn_cli.callback, **uvicorn_params)

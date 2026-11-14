@@ -12,7 +12,7 @@ from app.api_client import ChartServiceError
 from app.bodygraph import CENTER_MARKERS, render_bodygraph
 from app.experiments import SampleBusy, utc_timestamp
 from app.models import BirthProfile, UiSettings
-from app.natal import CENTER_LABELS, ProfileChanged, TopologyMissing, derive, load_topology
+from app.natal import ChartUnavailable, CENTER_LABELS, ProfileChanged, TopologyMissing, derive, load_topology
 
 
 def combined_definition(birth, frame, topology):
@@ -24,14 +24,17 @@ def combined_definition(birth, frame, topology):
     }, topology)
 
 
-def center_timeline_router(templates, current_profile, descriptions, natal, sessions, samples):
+def center_timeline_router(
+    templates, current_profile, descriptions, natal, sessions, samples,
+    *, preferences=None, authorize=None, natal_options=None,
+):
     router = APIRouter(prefix="/centers")
     headers = {"Cache-Control": "no-store"}
     graphs = OrderedDict()
     graph_lock = Lock()
 
-    def cached_graph(transit, birth, definition):
-        catalog = descriptions()
+    def cached_graph(transit, birth, definition, request):
+        catalog = descriptions(request)
         centers = [center["id"] for center in definition["centers"]]
         key = json.dumps([
             transit.model_dump(mode="json"), birth["profile"]["birth_utc"],
@@ -52,7 +55,7 @@ def center_timeline_router(templates, current_profile, descriptions, natal, sess
         return templates.TemplateResponse(
             request=request, name="center_timeline.html",
             context={
-                "current_profile": current_profile(),
+                "current_profile": current_profile(request),
                 "centers": [
                     {"id": key, "label": label, "color": CENTER_MARKERS[key][2]}
                     for key, label in CENTER_LABELS.items()
@@ -63,25 +66,27 @@ def center_timeline_router(templates, current_profile, descriptions, natal, sess
         )
 
     @router.get("/frame")
-    def frame(timestamp: datetime, profile_id: str, graph: bool = False):
+    def frame(request: Request, timestamp: datetime, profile_id: str, graph: bool = False):
         try:
             timestamp = utc_timestamp(timestamp)
             with sessions() as session:
-                preferences = session.get(UiSettings, 1)
-                if preferences is None:
+                prefs = preferences(session, request) if preferences else session.get(UiSettings, 1)
+                if prefs is None:
                     raise TopologyMissing("Einstellungen fehlen. Bitte Alembic-Migrationen ausführen.")
-                if preferences.active_profile_id != profile_id:
+                if authorize:
+                    authorize(session, profile_id, request)
+                if prefs.active_profile_id != profile_id:
                     raise ProfileChanged("Das aktuelle Profil wurde gewechselt oder abgewählt.")
                 topology = load_topology(session)
-            birth = natal.activations(profile_id)
+            birth = natal.activations(profile_id, **(natal_options(request, profile_id) if natal_options else {}))
             transit = samples.sample(timestamp, wait=False)
             definition = combined_definition(birth, transit, topology)
             # Do not attach results to a profile changed while the API request was in flight.
             with sessions() as session:
-                preferences = session.get(UiSettings, 1)
-                profile = session.get(BirthProfile, profile_id)
+                prefs = preferences(session, request) if preferences else session.get(UiSettings, 1)
+                profile = authorize(session, profile_id, request) if authorize else session.get(BirthProfile, profile_id)
                 if (
-                    preferences is None or preferences.active_profile_id != profile_id
+                    prefs is None or prefs.active_profile_id != profile_id
                     or profile is None
                     or profile.birth_utc.replace(tzinfo=UTC).isoformat() != birth["profile"]["birth_utc"]
                 ):
@@ -96,9 +101,9 @@ def center_timeline_router(templates, current_profile, descriptions, natal, sess
                 "channels": definition["channels"],
             }
             if graph:
-                payload["svg"] = cached_graph(transit, birth, definition)
+                payload["svg"] = cached_graph(transit, birth, definition, request)
             return JSONResponse(payload, headers=headers)
-        except ProfileChanged as exc:
+        except (ProfileChanged, ChartUnavailable) as exc:
             return JSONResponse(
                 {"detail": f"{exc} Bitte die Seite neu laden."}, status_code=409, headers=headers,
             )

@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Anmelden</title></head>
+<body>
+  <main>
+    <h1>Bei HDGUI anmelden</h1>
+    <form method="post" action="/auth/login">
+      <label for="email">E-Mail-Adresse</label>
+      <input id="email" name="email" type="email" autocomplete="email" required maxlength="254">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit">Anmeldelink senden</button>
+    </form>
+  </main>
+</body>
+</html>

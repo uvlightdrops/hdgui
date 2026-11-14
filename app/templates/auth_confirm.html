@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Anmeldung bestätigen</title></head>
+<body>
+  <script>history.replaceState(null, "", "/auth/confirm");</script>
+  <main>
+    <h1>Link bestätigen</h1>
+    <p>Fahren Sie nur fort, wenn Sie diese E-Mail angefordert haben. Das Öffnen des Links allein meldet Sie nicht an.</p>
+    <form method="post" action="/auth/confirm">
+      <input type="hidden" name="token" value="{{ token }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit">Bestätigen</button>
+    </form>
+  </main>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Profil teilen: {{ profile.name }}</h1>
+<p>Freigaben gewähren ausschließlich Leserechte auf Geburtsdatum, Geburtszeit, Zeitzone, Ortsbezeichnung und gespeicherte Charts/Aktivierungen. Änderungen bleiben dem Eigentümer vorbehalten.</p>
+<p>Der Kontakt sieht auch zukünftige Änderungen. Ein Widerruf verhindert weitere Zugriffe, löscht aber keine bereits angefertigten Kopien. Teile Daten anderer Personen nur mit deren Erlaubnis.</p>
+{% for user in contacts %}
+<article>
+  <h2>{{ user.display_name or user.email }}</h2>
+  {% if user.id in recipients %}
+  <p>Freigegeben · Nur Lesen</p>
+  <form method="post" action="/profiles/{{ profile.id }}/sharing/{{ user.id }}/revoke">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Freigabe widerrufen</button>
+  </form>
+  {% else %}
+  <form method="post" action="/profiles/{{ profile.id }}/sharing">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="recipient_id" value="{{ user.id }}">
+    <label><input type="checkbox" name="consent" value="yes" required>Ich bestätige die Freigabe dieser Profildaten.</label>
+    <button type="submit">Nur Lesen freigeben</button>
+  </form>
+  {% endif %}
+</article>
+{% else %}<p>Bitte zuerst einen bestätigten <a href="/contacts">Kontakt</a> hinzufügen.</p>{% endfor %}
+<nav class="actions" aria-label="Kontaktseiten für die Freigabe">
+  {% if page > 1 %}<a href="?page={{ page - 1 }}">Vorherige Seite</a>{% endif %}
+  {% if contacts | length == 25 %}<a href="?page={{ page + 1 }}">Nächste Seite</a>{% endif %}
+</nav>
+<p><a href="/profiles">Zur Profilübersicht</a></p>
+{% endblock %}

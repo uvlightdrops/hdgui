@@ -141,11 +141,19 @@ def is_fresh(profile, key: str) -> bool:
 class NatalService:
     """Lazily computes and persists activations; never touches the SVG chart cache."""
 
-    def __init__(self, sessions, client, settings):
+    def __init__(self, sessions, client, settings, *, require_authorization=False):
         self.sessions = sessions
         self.client = client
         self.settings = settings
         self._lock = Lock()
+        self.require_authorization = require_authorization
+
+    def _authorize(self, session, profile_id, authorize):
+        if authorize is None:
+            if self.require_authorization:
+                raise PermissionError("Profilzugriff benötigt einen angemeldeten Benutzer.")
+        else:
+            authorize(session, profile_id)
 
     def key(self, birth_utc: datetime) -> str:
         return activation_key(birth_utc, self.settings.api_url, self.settings.engine_version)
@@ -171,7 +179,10 @@ class NatalService:
             **derive(lists, load_topology(session)),
         }
 
-    def activations(self, profile_id: str, *, require_details: bool = False, refresh: bool = False) -> dict:
+    def activations(
+        self, profile_id: str, *, require_details: bool = False, refresh: bool = False,
+        authorize=None, allow_compute=True,
+    ) -> dict:
         """Stored activations if fresh, otherwise one API calculation (may raise)."""
         def fresh(profile, key):
             return not refresh and is_fresh(profile, key) and (
@@ -181,14 +192,18 @@ class NatalService:
             )
 
         with self.sessions() as session:
+            self._authorize(session, profile_id, authorize)
             profile = self._load(session, profile_id)
             if profile is None:
                 raise ProfileChanged("Das Profil existiert nicht mehr.")
             if fresh(profile, self.key(profile.birth_utc)):
                 return self._payload(session, profile)
+            if not allow_compute:
+                raise ChartUnavailable("Gespeicherte Aktivierungen fehlen oder sind veraltet. Der Eigentümer muss sie berechnen.")
         # Serialize calculations so concurrent requests reuse one result.
         with self._lock:
             with self.sessions() as session:
+                self._authorize(session, profile_id, authorize)
                 profile = self._load(session, profile_id)
                 if profile is None:
                     raise ProfileChanged("Das Profil existiert nicht mehr.")
@@ -206,6 +221,7 @@ class NatalService:
             except ValueError as exc:
                 raise NatalDataError(str(exc)) from exc
             with self.sessions.begin() as session:
+                self._authorize(session, profile_id, authorize)
                 profile = self._load(session, profile_id)
                 # Recheck inputs: an edit during the API call must not receive stale data.
                 if profile is None:
@@ -239,9 +255,10 @@ class NatalService:
                     session.delete(profile.birth_chart)
                 return self._payload(session, profile)
 
-    def stored_chart(self, profile_id: str) -> dict:
+    def stored_chart(self, profile_id: str, *, authorize=None) -> dict:
         """Read only; never call the engine or label a stale snapshot as current."""
         with self.sessions() as session:
+            self._authorize(session, profile_id, authorize)
             profile = self._load(session, profile_id)
             if profile is None:
                 raise ChartUnavailable("Profil nicht gefunden.")

@@ -7,12 +7,14 @@
   </div>
   <div class="actions">
     <a href="/profiles">Zur Profilübersicht</a>
+    {% if is_owner %}
     <a href="/profiles/{{ profile.id }}/edit">Profil bearbeiten</a>
     <form method="post" action="/profiles/{{ profile.id }}/chart">
       <input type="hidden" name="csrf" value="{{ csrf }}">
       <input type="hidden" name="refresh" value="1">
       <button type="submit">Neu berechnen</button>
     </form>
+    {% else %}<p>Geteiltes Profil · Nur Lesen</p>{% endif %}
   </div>
 </div>
 <div class="profile-chart-layout">
@@ -75,11 +77,11 @@
       {% endif %}
     </p>
     <p class="profile-muted">Die Neuberechnung liest Fakten aus dem Berechnungsdienst; Katalogbeschreibungen bleiben davon getrennt.</p>
-    <form method="post" action="/profiles/{{ profile.id }}/analysis">
+    {% if is_owner %}<form method="post" action="/profiles/{{ profile.id }}/analysis">
       <input type="hidden" name="csrf" value="{{ csrf }}">
       {% if analysis_stale %}<input type="hidden" name="refresh" value="1">{% endif %}
       <button type="submit">Geburtseigenschaften berechnen</button>
-    </form>
+    </form>{% else %}<p>Der Eigentümer muss fehlende oder veraltete Angaben neu berechnen.</p>{% endif %}
     {% endif %}
   </section>
 </div>

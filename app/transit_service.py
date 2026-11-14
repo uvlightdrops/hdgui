@@ -20,19 +20,19 @@ class TransitCache:
         self._wheel_descriptions = None
         self._bodygraph_descriptions = None
 
-    def bodygraph(self, frame: TransitFrame) -> str:
+    def bodygraph(self, frame: TransitFrame, catalog=None) -> str:
         with self._lock:
-            descriptions = self.descriptions()
+            descriptions = self.descriptions() if catalog is None else catalog
             if self._bodygraph_frame is not frame or self._bodygraph_descriptions != descriptions:
                 self._bodygraph = render_bodygraph(frame, descriptions)
                 self._bodygraph_frame = frame
                 self._bodygraph_descriptions = descriptions
             return self._bodygraph
 
-    def get(self, cache_seconds: int = 60) -> tuple[TransitFrame, str]:
+    def get(self, cache_seconds: int = 60, catalog=None) -> tuple[TransitFrame, str]:
         # Serialize refreshes so simultaneous viewers do not duplicate API calls.
         with self._lock:
-            descriptions = self.descriptions()
+            descriptions = self.descriptions() if catalog is None else catalog
             if self._cached is not None and monotonic() < self._started_at + cache_seconds:
                 if self._wheel_descriptions != descriptions:
                     frame, _ = self._cached
