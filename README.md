@@ -8,6 +8,7 @@ HDGUI is a local Python WebUI for exploring geocentric planetary positions along
 
 | Document | Purpose |
 |---|---|
+| [Feature Catalog](doc/features.md) | User-facing feature inventory and delivered limitations |
 | [Operations](doc/operations.md) | Installation, configuration, Docker lifecycle, migrations, catalog imports, backup and troubleshooting |
 | [Architecture](doc/architecture.md) | Actual implementation, domain boundaries, API integration, caches, limitations and proposed engineering work |
 | [Practice — English](doc/practice.en.md) | Value, reflective workflows and possible future developments for astrology and Human Design practice |
