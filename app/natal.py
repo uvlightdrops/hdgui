@@ -1,15 +1,18 @@
 """Natal (birth) activations: validation, derived channels/centers and persistence."""
 from datetime import UTC, datetime
+import json
 from threading import Lock
 
 from typing import NamedTuple
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, JsonValue, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.models import BirthActivation, BirthProfile, Channel, Gate
 from app.profiles import activation_key
+from app.natal_details import NatalDetails, NatalPosition
+from app.birth_charts import chart_payload, save_birth_chart
 from app.transit import TransitPosition
 
 SOURCES = ("personality", "design")
@@ -27,8 +30,17 @@ CENTER_LABELS = {
 
 class NatalActivations(BaseModel):
     """Both activation sets of exactly one birth profile, as returned by `/calculate`."""
-    personality: list[TransitPosition] = Field(min_length=1)
-    design: list[TransitPosition] = Field(min_length=1)
+    personality: list[NatalPosition] = Field(min_length=1)
+    design: list[NatalPosition] = Field(min_length=1)
+    details: NatalDetails | None = None
+    raw_response: dict[str, JsonValue] | None = None
+
+    @field_validator("personality", "design", mode="before")
+    @classmethod
+    def accept_positions(cls, values):
+        if isinstance(values, list):
+            return [value.model_dump() if isinstance(value, TransitPosition) else value for value in values]
+        return values
 
     @model_validator(mode="after")
     def consistent_bodies(self):
@@ -43,6 +55,22 @@ class NatalActivations(BaseModel):
         if bodies["personality"] != bodies["design"]:
             raise ValueError("Persönlichkeit und Design enthalten unterschiedliche Himmelskörper.")
         return self
+
+    def require_complete(self) -> tuple[NatalDetails, dict[str, JsonValue]]:
+        if self.details is None or self.raw_response is None:
+            raise ValueError("Die API liefert keine vollständigen Geburtschart-Angaben.")
+        json.dumps(self.raw_response, allow_nan=False)
+        for source in SOURCES:
+            positions = {position.body: position for position in getattr(self, source)}
+            if not BODY_LABELS.keys() <= positions.keys():
+                raise ValueError("Vollständiges Geburtschart benötigt die 13 Himmelskörper je Seite.")
+            if any(position.color is None or position.tone is None or position.base is None
+                   for position in positions.values()):
+                raise ValueError("Vollständiges Geburtschart benötigt Color, Tone und Base je Aktivierung.")
+        lines = tuple(next(p.line for p in getattr(self, source) if p.body == "Sun") for source in SOURCES)
+        if self.details.profile_code != f"{lines[0]}/{lines[1]}":
+            raise ValueError("Profilzahlen widersprechen den Sonnenlinien.")
+        return self.details, self.raw_response
 
 
 class TopologyMissing(Exception):
@@ -87,11 +115,21 @@ class ProfileChanged(Exception):
     pass
 
 
+class NatalDataError(Exception):
+    pass
+
+
+class ChartUnavailable(Exception):
+    pass
+
+
 def activation_lists(profile) -> dict[str, list[dict]]:
     result = {source: [] for source in SOURCES}
     for item in profile.activations:
         result[item.source].append({"body": item.body, "longitude": item.longitude,
-                                    "gate": item.gate, "line": item.line})
+                                    "gate": item.gate, "line": item.line,
+                                    "color": item.color, "tone": item.tone, "base": item.base,
+                                    "harmonic_gate": item.harmonic_gate})
     return result
 
 
@@ -114,7 +152,7 @@ class NatalService:
 
     def _load(self, session, profile_id):
         return session.get(BirthProfile, profile_id,
-                           options=[selectinload(BirthProfile.activations)],
+                           options=[selectinload(BirthProfile.activations), selectinload(BirthProfile.birth_chart)],
                            populate_existing=True)
 
     def _payload(self, session, profile) -> dict:
@@ -133,13 +171,20 @@ class NatalService:
             **derive(lists, load_topology(session)),
         }
 
-    def activations(self, profile_id: str) -> dict:
+    def activations(self, profile_id: str, *, require_details: bool = False, refresh: bool = False) -> dict:
         """Stored activations if fresh, otherwise one API calculation (may raise)."""
+        def fresh(profile, key):
+            return not refresh and is_fresh(profile, key) and (
+                not require_details or (
+                    profile.birth_chart is not None and profile.birth_chart.calculation_key == key
+                )
+            )
+
         with self.sessions() as session:
             profile = self._load(session, profile_id)
             if profile is None:
                 raise ProfileChanged("Das Profil existiert nicht mehr.")
-            if is_fresh(profile, self.key(profile.birth_utc)):
+            if fresh(profile, self.key(profile.birth_utc)):
                 return self._payload(session, profile)
         # Serialize calculations so concurrent requests reuse one result.
         with self._lock:
@@ -150,9 +195,16 @@ class NatalService:
                 birth_utc = profile.birth_utc
                 key = self.key(birth_utc)
                 load_topology(session)  # fail before any API call if the schema is incomplete
-                if is_fresh(profile, key):
+                if fresh(profile, key):
                     return self._payload(session, profile)
             natal = self.client.natal(birth_utc)
+            try:
+                if require_details or natal.details is not None:
+                    details, _ = natal.require_complete()
+                    if details.birth_date.replace(tzinfo=None) != birth_utc:
+                        raise ValueError("API-Geburtszeit stimmt nicht mit dem Profil überein.")
+            except ValueError as exc:
+                raise NatalDataError(str(exc)) from exc
             with self.sessions.begin() as session:
                 profile = self._load(session, profile_id)
                 # Recheck inputs: an edit during the API call must not receive stale data.
@@ -167,9 +219,36 @@ class NatalService:
                         profile.activations.append(BirthActivation(
                             source=source, body=position.body, longitude=position.longitude,
                             gate=position.gate, line=position.line,
+                            color=position.color, tone=position.tone, base=position.base,
+                            harmonic_gate=position.harmonic_gate,
                         ))
                 profile.activation_key = key
                 profile.activation_engine_version = self.settings.engine_version
                 profile.activations_calculated_at = datetime.now(UTC).replace(tzinfo=None, microsecond=0)
                 session.flush()
+                if natal.details is not None:
+                    try:
+                        topology = load_topology(session)
+                        save_birth_chart(
+                            session, natal, derive(activation_lists(profile), topology), topology.gate_centers,
+                            profile.id, key, self.settings, profile.activations_calculated_at,
+                        )
+                    except ValueError as exc:
+                        raise NatalDataError(str(exc)) from exc
+                elif profile.birth_chart is not None:
+                    session.delete(profile.birth_chart)
                 return self._payload(session, profile)
+
+    def stored_chart(self, profile_id: str) -> dict:
+        """Read only; never call the engine or label a stale snapshot as current."""
+        with self.sessions() as session:
+            profile = self._load(session, profile_id)
+            if profile is None:
+                raise ChartUnavailable("Profil nicht gefunden.")
+            chart = profile.birth_chart
+            if chart is None:
+                raise ChartUnavailable("Noch keine vollständigen Geburtschart-Angaben gespeichert.")
+            key = self.key(profile.birth_utc)
+            if chart.calculation_key != key or not is_fresh(profile, key):
+                raise ProfileChanged("Gespeichertes Geburtschart ist veraltet. Bitte neu berechnen.")
+            return {**self._payload(session, profile), **chart_payload(chart)}

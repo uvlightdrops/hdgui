@@ -15,6 +15,69 @@
     </form>
   </div>
 </div>
-<img class="profile-chart-large" src="/profiles/{{ profile.id }}/chart.svg"
-     alt="Human Design BodyGraph für {{ profile.name }}">
+<div class="profile-chart-layout">
+  <section class="profile-chart-visual" aria-label="Bodygraph">
+    <img class="profile-chart-large" src="/profiles/{{ profile.id }}/chart.svg"
+         alt="Human Design BodyGraph für {{ profile.name }}">
+  </section>
+  <section class="profile-properties" aria-labelledby="profile-properties-title">
+    <h2 id="profile-properties-title">Wichtige Eigenschaften</h2>
+    {% if analysis_current %}
+    <p class="profile-muted">Aus der Geburtsberechnung · {{ analysis_calculated_at.strftime("%d.%m.%Y %H:%M") }} UTC</p>
+    <dl class="profile-property-list">
+      {% for property in properties %}
+      <div>
+        <dt>{{ property.label }}</dt>
+        <dd>
+          {% if property.entity %}
+          <a href="/knowledge/entities?category={{ property.entity.category }}#{{ property.entity.id }}">
+            {{ property.value }}
+          </a>
+          {% else %}
+          {{ property.value }}
+          <span class="profile-muted">(noch keinem Katalogeintrag zugeordnet)</span>
+          {% endif %}
+        </dd>
+      </div>
+      {% endfor %}
+    </dl>
+    <h3>Variablen</h3>
+    <dl class="profile-property-list">
+      {% for variable in variables %}
+      <div>
+        <dt>{{ variable.label }}</dt>
+        <dd>
+          {{ variable.value.name }}
+          {% if variable.direction %}
+          · <a href="/knowledge/entities?category=direction#{{ variable.direction.id }}">{{ variable.direction.name }}</a>
+          {% else %}
+          · {{ variable.value.value }}
+          {% endif %}
+        </dd>
+      </div>
+      {% endfor %}
+    </dl>
+    <h3>Zentren</h3>
+    <dl class="profile-property-list">
+      <div><dt>Definiert</dt><dd>{{ centers.defined | join(", ") or "Keine" }}</dd></div>
+      <div><dt>Undefiniert</dt><dd>{{ centers.undefined | join(", ") or "Keine" }}</dd></div>
+      <div><dt>Offen</dt><dd>{{ centers.open | join(", ") or "Keine" }}</dd></div>
+    </dl>
+    {% else %}
+    <p>
+      {% if analysis_stale %}
+      Die gespeicherten Eigenschaften passen nicht mehr zu diesem Profil oder zur aktuellen Berechnungsversion.
+      {% else %}
+      Die detaillierten Geburtseigenschaften wurden noch nicht berechnet.
+      {% endif %}
+    </p>
+    <p class="profile-muted">Die Neuberechnung liest Fakten aus dem Berechnungsdienst; Katalogbeschreibungen bleiben davon getrennt.</p>
+    <form method="post" action="/profiles/{{ profile.id }}/analysis">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {% if analysis_stale %}<input type="hidden" name="refresh" value="1">{% endif %}
+      <button type="submit">Geburtseigenschaften berechnen</button>
+    </form>
+    {% endif %}
+  </section>
+</div>
 {% endblock %}

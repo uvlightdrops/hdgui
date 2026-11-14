@@ -22,9 +22,11 @@ from app.gate_forecast import GateForecastService
 from app.experiments import SampleCache, experiment_router
 from app.center_timeline import center_timeline_router
 from app.gate_descriptions import CatalogMissing, gate_descriptions, gate_tooltip
-from app.models import BirthProfile, Channel, Circuit, Gate, UiSettings
+from app.hd_catalog import CATEGORY_LABELS
+from app.models import BirthProfile, Channel, Circuit, Gate, HdEntity, UiSettings
 from app.natal import (
-    BODY_LABELS, CENTER_LABELS, SOURCE_LABELS, NatalService, ProfileChanged, TopologyMissing, activation_lists, derive,
+    BODY_LABELS, CENTER_LABELS, SOURCE_LABELS, ChartUnavailable, NatalDataError, NatalService,
+    ProfileChanged, TopologyMissing, activation_lists, derive,
     is_fresh, load_topology,
 )
 from app.profiles import ProfileInput, activation_key, chart_key
@@ -103,6 +105,23 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     def celestial_bodies_page(request: Request):
         return templates.TemplateResponse(
             request=request, name="celestial_bodies.html", context={},
+        )
+
+    @app.get("/knowledge/entities")
+    def entities_page(request: Request, category: str = "type"):
+        if category not in CATEGORY_LABELS:
+            raise HTTPException(404, "Unbekannte Entitäten-Kategorie.")
+        try:
+            with sessions() as session:
+                entities = session.scalars(
+                    select(HdEntity).where(HdEntity.category == category).order_by(HdEntity.id),
+                ).all()
+        except SQLAlchemyError as exc:
+            raise HTTPException(500, "Entitätenkatalog nicht verfügbar. Bitte Alembic-Migrationen ausführen.") from exc
+        return templates.TemplateResponse(
+            request=request, name="hd_entities.html",
+            context={"entities": entities, "categories": CATEGORY_LABELS, "category": category},
+            headers={"Cache-Control": "no-store"},
         )
 
     def catalog_context():
@@ -200,14 +219,21 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     def profiles_page(request: Request):
         with sessions() as session:
             profiles = session.scalars(
-                select(BirthProfile).options(selectinload(BirthProfile.activations))
+                select(BirthProfile).options(
+                    selectinload(BirthProfile.activations), selectinload(BirthProfile.birth_chart),
+                )
                 .order_by(BirthProfile.name, BirthProfile.id)
             ).all()
             current_id = get_preferences(session).active_profile_id
             activations = {}
+            chart_status = {}
             topology = None
             for profile in profiles:
                 key = activation_key(profile.birth_utc, settings.api_url, settings.engine_version)
+                chart_status[profile.id] = (
+                    "current" if profile.birth_chart and profile.birth_chart.calculation_key == key
+                    else "stale" if profile.birth_chart else "missing"
+                )
                 if is_fresh(profile, key):
                     lists = activation_lists(profile)
                     if topology is None:
@@ -221,7 +247,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
             request=request, name="index.html",
             context={"profiles": profiles, "csrf": token(request), "current": current,
                      "activations": activations, "source_labels": SOURCE_LABELS,
-                     "body_labels": BODY_LABELS},
+                     "body_labels": BODY_LABELS, "chart_status": chart_status},
         )
 
     @app.post("/profiles/current/clear")
@@ -255,10 +281,49 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         except ProfileChanged as exc:
             return JSONResponse({"detail": f"{exc} Bitte erneut versuchen."}, status_code=409,
                                 headers=headers)
-        except ChartServiceError as exc:
+        except (ChartServiceError, NatalDataError) as exc:
             return JSONResponse({"detail": str(exc)}, status_code=502, headers=headers)
         except TopologyMissing as exc:
             return JSONResponse({"detail": str(exc)}, status_code=500, headers=headers)
+        except SQLAlchemyError:
+            return JSONResponse(
+                {"detail": "Geburtschart-Datenbank nicht verfügbar. Bitte Alembic-Migrationen prüfen."},
+                status_code=500, headers=headers,
+            )
+
+    @app.get("/profiles/{profile_id}/analysis")
+    def stored_analysis(profile_id: str):
+        headers = {"Cache-Control": "no-store"}
+        try:
+            return JSONResponse(natal.stored_chart(profile_id), headers=headers)
+        except ChartUnavailable as exc:
+            return JSONResponse({"detail": str(exc)}, status_code=404, headers=headers)
+        except ProfileChanged as exc:
+            return JSONResponse({"detail": str(exc)}, status_code=409, headers=headers)
+        except (TopologyMissing, SQLAlchemyError):
+            return JSONResponse(
+                {"detail": "Geburtschart-Datenbank nicht verfügbar. Bitte Alembic-Migrationen prüfen."},
+                status_code=500, headers=headers,
+            )
+
+    @app.post("/profiles/{profile_id}/analysis")
+    async def calculate_analysis(request: Request, profile_id: str):
+        form = await request.form()
+        check_csrf(request, form)
+        from starlette.concurrency import run_in_threadpool
+        try:
+            with sessions() as session:
+                get_profile(session, profile_id)
+            await run_in_threadpool(
+                natal.activations, profile_id, require_details=True, refresh=form.get("refresh") == "1",
+            )
+        except ProfileChanged as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except (ChartServiceError, NatalDataError) as exc:
+            raise HTTPException(502, str(exc)) from exc
+        except (TopologyMissing, SQLAlchemyError) as exc:
+            raise HTTPException(500, "Geburtschart-Datenbank nicht verfügbar. Bitte Migrationen prüfen.") from exc
+        return RedirectResponse(f"/profiles/{profile_id}/analysis", status_code=303)
 
     @app.get("/profiles/new")
     def new(request: Request):
@@ -381,6 +446,9 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                     profile.activation_key = None
                     profile.activation_engine_version = None
                     profile.activations_calculated_at = None
+                    profile.birth_chart = None
+                elif profile.birth_chart is not None and profile.birth_chart.calculation_key != natal_key:
+                    profile.birth_chart = None
             else:
                 profile = BirthProfile(id=str(uuid4()))
                 session.add(profile)
@@ -443,13 +511,77 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     @app.get("/profiles/{profile_id}/chart")
     def chart_page(request: Request, profile_id: str):
         with sessions() as session:
-            profile = get_profile(session, profile_id)
+            profile = session.get(
+                BirthProfile, profile_id, options=[
+                    selectinload(BirthProfile.activations), selectinload(BirthProfile.birth_chart),
+                ],
+            )
+            if profile is None:
+                raise HTTPException(404, "Profil nicht gefunden.")
         key = chart_key(profile.birth_utc, settings.api_url, settings.engine_version)
         if not profile.chart_svg or profile.chart_key != key:
             raise HTTPException(404, "Kein aktuelles Chart gespeichert. Bitte berechnen.")
+        natal_key = activation_key(profile.birth_utc, settings.api_url, settings.engine_version)
+        chart = profile.birth_chart
+        chart_is_current = bool(
+            chart and chart.calculation_key == natal_key and is_fresh(profile, natal_key)
+        )
+        properties = []
+        variables = []
+        centers = None
+        calculated_at = None
+        if chart_is_current:
+            with sessions() as session:
+                entities = {
+                    entity.id: entity
+                    for entity in session.scalars(
+                        select(HdEntity).where(HdEntity.id.in_(set(chart.catalog_links.values()))),
+                    )
+                }
+            fields = (
+                ("Typ", "energy_type", "energy_type"),
+                ("Strategie", "strategy", "strategy"),
+                ("Innere Autorität", "inner_authority", "inner_authority"),
+                ("Profil", "profile", "profile"),
+                ("Definition", "definition", "definition"),
+                ("Inkarnationskreuz", "inc_cross", "incarnation_cross"),
+                ("Signatur", "signature", "signature"),
+                ("Nicht-Selbst-Thema", "not_self", "not_self"),
+                ("Aura", "aura", "aura"),
+            )
+            properties = [
+                {
+                    "label": label,
+                    "value": entities[chart.catalog_links[link_key]].name
+                    if chart.catalog_links.get(link_key) in entities
+                    else chart.general.get(value_key, "Nicht angegeben"),
+                    "entity": entities.get(chart.catalog_links.get(link_key)),
+                }
+                for label, value_key, link_key in fields
+            ]
+            variable_labels = {
+                "top_left": "Oben links", "bottom_left": "Unten links",
+                "bottom_right": "Unten rechts", "top_right": "Oben rechts",
+            }
+            variables = [
+                {
+                    "label": variable_labels[slot],
+                    "value": value,
+                    "direction": entities.get(chart.catalog_links.get(f"variables.{slot}.direction")),
+                }
+                for slot, value in chart.variables.items()
+                if slot in variable_labels
+            ]
+            centers = chart.centers
+            calculated_at = chart.calculated_at
         return templates.TemplateResponse(
             request=request, name="profile_chart.html",
-            context={"profile": profile, "csrf": token(request)},
+            context={
+                "profile": profile, "csrf": token(request), "properties": properties,
+                "variables": variables, "centers": centers, "analysis_current": chart_is_current,
+                "analysis_stale": chart is not None and not chart_is_current,
+                "analysis_calculated_at": calculated_at,
+            },
             headers={"Cache-Control": "no-store"},
         )
 

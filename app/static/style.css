@@ -21,7 +21,20 @@ footer { color: #aab6c8; font-size: .9rem; }
 .profile-card .chart { width: 35%; max-width: 350px; margin: 0; flex-shrink: 0; }
 .profile-details { min-width: 0; }
 .profile-details h2 { margin-top: 0; }
-.profile-chart-large { display: block; width: min(100%, 900px); height: auto; margin: 1rem auto; background: #fff; border-radius: .5rem; }
+.profile-chart-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.profile-chart-visual, .profile-properties { min-width: 0; }
+.profile-chart-large { display: block; width: min(100%, 480px); height: auto; margin: 1rem auto; background: #fff; border-radius: .5rem; }
+.profile-properties { padding: 1.25rem; background: #1a2635; border: 1px solid #344356; border-radius: .75rem; }
+.profile-properties h2 { margin-top: 0; }
+.profile-property-list { margin: 0; }
+.profile-property-list > div { display: grid; grid-template-columns: minmax(110px, .7fr) minmax(0, 1.3fr); gap: .75rem; padding: .65rem 0; border-bottom: 1px solid #344356; }
+.profile-property-list dt { color: #bac8da; }
+.profile-property-list dd { margin: 0; overflow-wrap: anywhere; }
+.profile-properties h3 { margin: 1.5rem 0 .4rem; }
+@container (max-width: 760px) {
+  .profile-chart-layout { grid-template-columns: minmax(0, 1fr); }
+  .profile-chart-large { width: min(100%, 420px); }
+}
 .gate-index { display: flex; flex-wrap: wrap; gap: .25rem; margin-bottom: .75rem; }
 .gate-index a { padding: .3rem; min-width: 1.5rem; text-align: center; }
 .gate-description { margin-bottom: .5rem; scroll-margin-top: 1rem; padding: .65rem .9rem; border-radius: .5rem; font-size: .9rem; line-height: 1.4; }

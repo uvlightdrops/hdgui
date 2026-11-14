@@ -1,0 +1,146 @@
+# KI-Autorschaft: GitHub Copilot (zugrunde liegendes Modell nicht identifiziert), 2026-11-14.
+# Eigenständig formulierte, ungeprüfte Kurzbeschreibungen; keine übernommenen Lehrtexte.
+# Human Design ist ein interpretatives System, kein wissenschaftlich bestätigtes Persönlichkeitsmodell.
+# Jeder Text trägt eigene Herkunftsdaten. Eigene Texte: origin: human, model: null, Autor und Datum anpassen.
+schema_version: 1
+entities:
+  - id: type.generator
+    name: Generator
+    description: "Im System steht dieser Typ für ein definiertes Sakralzentrum ohne motorische Verbindung zur Kehle. Sein Strategiebegriff ist Reagieren."
+    provenance: &ai
+      origin: ai
+      author: GitHub Copilot
+      model: unbekannt
+      written_at: 2026-11-14
+      status: draft
+  - {id: type.manifesting-generator, name: Manifestierender Generator, description: "Eine Generator-Variante mit definiertem Sakralzentrum und motorischer Verbindung zur Kehle. Reaktion und Umsetzung werden hier gemeinsam betrachtet.", provenance: *ai}
+  - {id: type.projector, name: Projektor, description: "Bezeichnet im System einen Typ ohne definiertes Sakralzentrum und ohne motorische Verbindung zur Kehle, jedoch mit mindestens einem definierten Zentrum.", provenance: *ai}
+  - {id: type.manifestor, name: Manifestor, description: "Bezeichnet einen Typ mit motorischer Verbindung zur Kehle, aber ohne definiertes Sakralzentrum. Initiative ist sein systeminternes Leitmotiv.", provenance: *ai}
+  - {id: type.reflector, name: Reflektor, description: "Dieser Typ hat im Geburtsgraphen keine definierten Zentren. Das System betrachtet wechselnde Konstellationen deshalb besonders im zeitlichen Verlauf.", provenance: *ai}
+  - {id: strategy.respond, name: Reagieren, description: "Ein systeminterner Orientierungsvorschlag, konkrete Anlässe und die eigene Reaktion darauf wahrzunehmen, statt allein von einer Vorstellung auszugehen.", provenance: *ai}
+  - {id: strategy.invitation, name: Einladung abwarten, description: "Hier werden Anerkennung und Einladung als Rahmen für wichtige Beteiligungen betrachtet, nicht als Verbot alltäglicher Eigeninitiative.", provenance: *ai}
+  - {id: strategy.inform, name: Informieren, description: "Im System soll das Mitteilen einer beabsichtigten Handlung betroffenen Menschen Orientierung geben; Zustimmung und Information sind dabei verschiedene Dinge.", provenance: *ai}
+  - {id: strategy.lunar-cycle, name: Mondzyklus beobachten, description: "Ein systeminterner Vorschlag, wichtige Fragen über einen Mondzyklus hinweg zu betrachten. Das ersetzt keine dringlichen oder fachlich begründeten Entscheidungen.", provenance: *ai}
+  - {id: signature.satisfaction, name: Zufriedenheit, description: "Ein Reflexionswort für als stimmig erlebten Einsatz. Es ist weder ein Messwert noch ein garantierter Zustand.", provenance: *ai}
+  - {id: signature.success, name: Erfolg, description: "Im System ein Wort für erlebte Anerkennung und passende Beteiligung; es bezeichnet nicht zwingend Leistung oder gesellschaftlichen Status.", provenance: *ai}
+  - {id: signature.peace, name: Frieden, description: "Ein systeminterner Begriff für als ungehindert und ruhig erlebte Eigenständigkeit, keine Zusage konfliktfreien Lebens.", provenance: *ai}
+  - {id: signature.surprise, name: Überraschung, description: "Ein Reflexionsbegriff für Offenheit gegenüber unerwarteten Erfahrungen, nicht eine Vorhersage kommender Ereignisse.", provenance: *ai}
+  - {id: not-self.frustration, name: Frustration, description: "Das System verwendet Frustration als Anlass, Einsatz und Erwartungen zu betrachten. Ein Gefühl beweist keine falsche Lebensführung.", provenance: *ai}
+  - {id: not-self.bitterness, name: Bitterkeit, description: "Ein systeminternes Reflexionsthema zu Anerkennung und Beteiligung; keine Diagnose und keine feste Charaktereigenschaft.", provenance: *ai}
+  - {id: not-self.anger, name: Ärger, description: "Ein Reflexionsthema zu Grenzen und Handlungsspielraum. Ärger kann viele Ursachen haben, die ein Chart nicht erklärt.", provenance: *ai}
+  - {id: not-self.disappointment, name: Enttäuschung, description: "Im System ein Anlass, Erwartungen und Erfahrung auseinanderzuhalten, nicht ein Urteil über die Person.", provenance: *ai}
+  - {id: aura.enveloping, name: Offen und umhüllend, description: "Eine metaphorische Beschreibung des Generator-Typs; damit wird kein naturwissenschaftlich nachgewiesenes Energiefeld bezeichnet.", provenance: *ai}
+  - {id: aura.focused, name: Fokussiert, description: "Eine systeminterne Metapher für gezielte Aufmerksamkeit beim Projektor, keine gemessene physische Eigenschaft.", provenance: *ai}
+  - {id: aura.closed, name: Geschlossen, description: "Eine systeminterne Metapher für Abgrenzung beim Manifestor, keine Aussage über Kontaktfähigkeit oder Wert einer Person.", provenance: *ai}
+  - {id: aura.sampling, name: Abtastend, description: "Eine Metapher für wechselnde Eindrücke beim Reflektor. Eine physische Abtastfunktion wird damit nicht belegt.", provenance: *ai}
+  - {id: authority.emotional, name: Emotionale Autorität, description: "Bei definiertem Solarplexus betont das System die Beobachtung emotionaler Veränderungen über Zeit, statt einem einzelnen Moment letzte Gewissheit zuzuschreiben.", provenance: *ai}
+  - {id: authority.sacral, name: Sakrale Autorität, description: "Bei definiertem Sakral ohne emotionale Autorität richtet das System Aufmerksamkeit auf unmittelbare körperliche Reaktionen auf konkrete Anlässe.", provenance: *ai}
+  - {id: authority.splenic, name: Milzautorität, description: "Ein systeminterner Begriff für momentbezogene intuitive Wahrnehmung. Solche Eindrücke sind kein verlässlicher Ersatz für Sicherheits- oder Gesundheitsinformationen.", provenance: *ai}
+  - {id: authority.ego-manifested, name: Ego-manifestierte Autorität, description: "Eine Autoritätskategorie mit Herz-Ego-Verbindung zur Kehle. Im Deutungsrahmen stehen eigener Wille und dessen Ausdruck im Vordergrund.", provenance: *ai}
+  - {id: authority.ego-projected, name: Ego-projizierte Autorität, description: "Eine Autoritätskategorie, in der eigener Wille im Rahmen passender Einladungen betrachtet wird. Sie unterscheidet sich von ego-manifestierter Autorität.", provenance: *ai}
+  - {id: authority.self-projected, name: Selbstprojizierte Autorität, description: "Hier betrachtet das System den hörbaren Ausdruck eigener Richtung als Reflexionshilfe. Das ist keine objektive Wahrheitsprüfung.", provenance: *ai}
+  - {id: authority.environmental, name: Umgebungsbezogene Autorität, description: "Diese Kategorie wird auch als mentale Projektion ohne innere Autorität beschrieben. Austausch und Umfeld dienen als Reflexionsrahmen, nicht als Entscheidung durch andere.", provenance: *ai}
+  - {id: authority.lunar, name: Lunare Autorität, description: "Beim Reflektor betrachtet das System Beobachtungen über einen Mondzyklus. Der Begriff beschreibt keine wissenschaftlich bestätigte Entscheidungsfähigkeit des Mondes.", provenance: *ai}
+  - {id: definition.none, name: Keine Definition, description: "Im Geburtsgraphen ist kein vollständiger Kanal vorhanden; deshalb ist auch kein Zentrum definiert.", provenance: *ai}
+  - {id: definition.single, name: Einfache Definition, description: "Alle definierten Zentren bilden über vollständige Kanäle ein zusammenhängendes Netz.", provenance: *ai}
+  - {id: definition.split, name: Zweifache Definition, description: "Die definierten Zentren bilden zwei voneinander getrennte Netze. Diese graphische Eigenschaft ist keine Aussage über persönliche Vollständigkeit.", provenance: *ai}
+  - {id: definition.triple-split, name: Dreifache Definition, description: "Die definierten Zentren verteilen sich auf drei getrennte Netze vollständiger Kanäle.", provenance: *ai}
+  - {id: definition.quadruple-split, name: Vierfache Definition, description: "Die definierten Zentren verteilen sich auf vier getrennte Netze vollständiger Kanäle.", provenance: *ai}
+  - {id: profile.1-3, name: "Profil 1/3", description: "Verbindet das Linienthema gründlicher Erkundung auf der Persönlichkeitsseite mit erfahrungsbezogenem Erproben auf der Designseite.", provenance: *ai}
+  - {id: profile.1-4, name: "Profil 1/4", description: "Verbindet gründliche Erkundung mit dem Linienthema vertrauter Beziehungen und sozialer Verbindung.", provenance: *ai}
+  - {id: profile.2-4, name: "Profil 2/4", description: "Verbindet das Thema selbstverständlicher Begabung und Rückzug mit dem Thema Beziehungen und Verbindung.", provenance: *ai}
+  - {id: profile.2-5, name: "Profil 2/5", description: "Verbindet Begabung und Rückzug mit dem Thema praktischer Erwartungen, die andere an eine Person richten können.", provenance: *ai}
+  - {id: profile.3-5, name: "Profil 3/5", description: "Verbindet Lernen durch Erproben mit dem Thema praktikabler Lösungen und äußerer Erwartungen.", provenance: *ai}
+  - {id: profile.3-6, name: "Profil 3/6", description: "Verbindet erfahrungsbezogenes Erproben mit dem Thema zeitlicher Distanz und sich entwickelnder Übersicht.", provenance: *ai}
+  - {id: profile.4-6, name: "Profil 4/6", description: "Verbindet Beziehungen und Verbindung mit dem Thema gewachsener Übersicht. Die Zahlen sind Linienpositionen, keine Entwicklungsnoten.", provenance: *ai}
+  - {id: profile.4-1, name: "Profil 4/1", description: "Verbindet Beziehungen auf der Persönlichkeitsseite mit dem Thema gründlicher Erkundung auf der Designseite; es gehört zur Juxtaposition-Geometrie.", provenance: *ai}
+  - {id: profile.5-1, name: "Profil 5/1", description: "Verbindet praktische Erwartungen und Projektionen mit dem Thema tragfähiger Grundlagen.", provenance: *ai}
+  - {id: profile.5-2, name: "Profil 5/2", description: "Verbindet das Thema äußerer Erwartungen mit Begabung und Rückzug; dies ist ein Deutungsrahmen, keine feste soziale Rolle.", provenance: *ai}
+  - {id: profile.6-2, name: "Profil 6/2", description: "Verbindet das Thema gewachsener Übersicht mit Begabung und Rückzug.", provenance: *ai}
+  - {id: profile.6-3, name: "Profil 6/3", description: "Verbindet zeitliche Übersicht mit Lernen durch Erproben. Der Deutungsrahmen lässt unterschiedliche Lebensverläufe offen.", provenance: *ai}
+  - {id: center.Head, name: Kopf, description: "Im System dem Druck zu Fragen und Inspiration zugeordnet. Definition entsteht durch einen vollständigen angeschlossenen Kanal.", provenance: *ai}
+  - {id: center.Ajna, name: Ajna, description: "Ein Zentrum für systeminterne Themen wie Begriffsbildung und gedankliche Verarbeitung, keine anatomische Hirnbeschreibung.", provenance: *ai}
+  - {id: center.Throat, name: Kehle, description: "Das System verbindet dieses Zentrum mit Ausdruck und Umsetzung. Ein aktiviertes Tor allein definiert es nicht.", provenance: *ai}
+  - {id: center.G, name: G-Zentrum, description: "Im System mit Identität, Richtung und Verbundenheit verbunden; daraus lässt sich keine objektive Lebensaufgabe ableiten.", provenance: *ai}
+  - {id: center.Heart, name: Herz / Ego, description: "Ein Zentrum für systeminterne Themen von Wille und materiellen Vereinbarungen, nicht das medizinische Herz.", provenance: *ai}
+  - {id: center.Spleen, name: Milz, description: "Im System mit gegenwartsbezogener Wahrnehmung verbunden. Das Chart beschreibt weder Organfunktion noch Gesundheitszustand.", provenance: *ai}
+  - {id: center.Solar, name: Solarplexus, description: "Im System mit emotionaler Verarbeitung verbunden. Definition hier hat in der üblichen Autoritätsordnung Vorrang.", provenance: *ai}
+  - {id: center.Sacral, name: Sakral, description: "Im System mit Reaktion und verfügbarer Tätigkeit verbunden; seine Definition ist ein Merkmal der Generator-Familie.", provenance: *ai}
+  - {id: center.Root, name: Wurzel, description: "Ein Zentrum für systeminterne Themen von Druck und Antrieb. Das ist keine medizinische Aussage über Stressregulation.", provenance: *ai}
+  - {id: body.Sun, name: Sonne, description: "Die Sonnenposition liefert eine zentrale Aktivierung; ihre Linie auf Persönlichkeits- und Designseite bestimmt die beiden Profilzahlen.", provenance: *ai}
+  - {id: body.Earth, name: Erde, description: "Die Erde wird im geozentrischen HD-Mandala gegenüber der Sonne eingeordnet und liefert je Seite ein Tor des Inkarnationskreuzes.", provenance: *ai}
+  - {id: body.Moon, name: Mond, description: "Die Mondposition liefert eine eigenständige Aktivierung. In Deutungen wird sie häufig mit Antrieb verbunden.", provenance: *ai}
+  - {id: body.North_Node, name: Nördlicher Mondknoten, description: "Ein berechneter Schnittpunkt von Mondbahn und Ekliptik, kein Planet; im System auch Bezugspunkt für Umgebungs- und Perspektivthemen.", provenance: *ai}
+  - {id: body.South_Node, name: Südlicher Mondknoten, description: "Der gegenüberliegende Mondknoten ergänzt die Knotenachse. Seine Position ist von der eines physischen Himmelskörpers zu unterscheiden.", provenance: *ai}
+  - {id: body.Mercury, name: Merkur, description: "Merkur liefert eine Toraktivierung; im interpretativen Rahmen wird sie oft zum Nachdenken über Kommunikation verwendet.", provenance: *ai}
+  - {id: body.Venus, name: Venus, description: "Venus liefert eine Toraktivierung; Deutungen verbinden sie häufig mit Werten und Maßstäben.", provenance: *ai}
+  - {id: body.Mars, name: Mars, description: "Mars liefert eine Toraktivierung; als Deutungsthema können Erprobung und sich entwickelnder Umgang mit Impulsen betrachtet werden.", provenance: *ai}
+  - {id: body.Jupiter, name: Jupiter, description: "Jupiter liefert eine Toraktivierung; im Deutungsrahmen wird sie häufig mit Regeln und Erweiterung verbunden.", provenance: *ai}
+  - {id: body.Saturn, name: Saturn, description: "Saturn liefert eine Toraktivierung; Verantwortung und Grenzen sind verbreitete interpretative Bezugsthemen.", provenance: *ai}
+  - {id: body.Uranus, name: Uranus, description: "Uranus liefert eine Toraktivierung; Deutungen können Eigenständigkeit und Abweichung von Gewohntem als Themen verwenden.", provenance: *ai}
+  - {id: body.Neptune, name: Neptun, description: "Neptun liefert eine Toraktivierung; im interpretativen Rahmen werden damit häufig Unklarheit und Verhüllung verbunden.", provenance: *ai}
+  - {id: body.Pluto, name: Pluto, description: "Pluto liefert eine Toraktivierung; Deutungen verbinden sie oft mit vertiefender Veränderung. Ereignisse lassen sich daraus nicht zuverlässig vorhersagen.", provenance: *ai}
+  - {id: source.personality, name: Persönlichkeit, description: "Aktivierungen zum Geburtszeitpunkt. Das System bezeichnet diese Seite als bewusst; dies ist keine psychologische Messung.", provenance: *ai}
+  - {id: source.design, name: Design, description: "Aktivierungen am berechneten vorgeburtlichen Designzeitpunkt, ungefähr 88 Sonnenbogengrade vor der Geburt; nicht pauschal 88 Kalendertage.", provenance: *ai}
+  - {id: line.1, name: "Linie 1 – Erkunden", description: "Als allgemeines Linienthema steht gründliche Erkundung und das Suchen nach tragfähigen Grundlagen im Vordergrund.", provenance: *ai}
+  - {id: line.2, name: "Linie 2 – Eigenes Können", description: "Als allgemeines Linienthema werden selbstverständliches Können, Rückzug und dessen Wahrnehmung durch andere betrachtet.", provenance: *ai}
+  - {id: line.3, name: "Linie 3 – Erproben", description: "Als allgemeines Linienthema steht erfahrungsbezogenes Lernen durch Versuche und Anpassungen im Vordergrund.", provenance: *ai}
+  - {id: line.4, name: "Linie 4 – Verbinden", description: "Als allgemeines Linienthema werden Beziehungen, Vertrauen und Weitergabe im vertrauten Umfeld betrachtet.", provenance: *ai}
+  - {id: line.5, name: "Linie 5 – Praktische Erwartungen", description: "Als allgemeines Linienthema stehen brauchbare Lösungen und Erwartungen anderer im Vordergrund.", provenance: *ai}
+  - {id: line.6, name: "Linie 6 – Überblick", description: "Als allgemeines Linienthema werden zeitliche Distanz, Übersicht und gelebtes Beispiel betrachtet, ohne einen Lebensverlauf festzulegen.", provenance: *ai}
+  - {id: cross-angle.right, name: Rechtswinklig, description: "Die Kreuz-Geometrie der Profile 1/3 bis 4/6 wird im System als rechtswinklig bezeichnet; das Kreuz selbst braucht zusätzlich die vier Sonnen- und Erdtore.", provenance: *ai}
+  - {id: cross-angle.juxtaposition, name: Juxtaposition, description: "Die Kreuz-Geometrie des Profils 4/1. Diese Kategorie allein benennt noch kein bestimmtes Inkarnationskreuz.", provenance: *ai}
+  - {id: cross-angle.left, name: Linkswinklig, description: "Die Kreuz-Geometrie der Profile mit Persönlichkeitslinie 5 oder 6. Die konkrete Kreuzkennung enthält außerdem die vier Sonnen- und Erdtore.", provenance: *ai}
+  - {id: variable.digestion, name: Determination / Verdauung, description: "Die obere linke Variable bezieht sich auf Design-Sonne/Erde. Ihre traditionellen Begriffe sind keine wissenschaftlich begründeten Ernährungsempfehlungen.", provenance: *ai}
+  - {id: variable.environment, name: Umgebung, description: "Die untere linke Variable bezieht sich auf die Design-Mondknoten. Umgebungsbegriffe sind systeminterne Kategorien, keine Vorgaben für einen Wohnort.", provenance: *ai}
+  - {id: variable.perspective, name: Perspektive, description: "Die untere rechte Variable bezieht sich auf die Persönlichkeits-Mondknoten und bezeichnet eine systeminterne Betrachtungsweise.", provenance: *ai}
+  - {id: variable.motivation, name: Motivation, description: "Die obere rechte Variable bezieht sich auf Persönlichkeit-Sonne/Erde. Ihr Kategoriename beweist kein tatsächliches Motiv einer Person.", provenance: *ai}
+  - {id: direction.left, name: Linksorientiert, description: "Eine Pfeilausrichtung, die das System mit eher fokussierter Verarbeitung verbindet. Ihre Bedeutung hängt von der jeweiligen Variable ab.", provenance: *ai}
+  - {id: direction.right, name: Rechtsorientiert, description: "Eine Pfeilausrichtung, die das System mit eher aufnehmender Verarbeitung verbindet. Sie ist keine höhere oder niedrigere Entwicklungsstufe.", provenance: *ai}
+  - {id: color.1, name: Color 1, description: "Erste von sechs Unterteilungen einer Linie. Die thematische Bezeichnung hängt von Quelle und Variable ab.", provenance: *ai}
+  - {id: color.2, name: Color 2, description: "Zweite von sechs Unterteilungen einer Linie; dieselbe Zahl darf nicht ohne Variablenkontext gedeutet werden.", provenance: *ai}
+  - {id: color.3, name: Color 3, description: "Dritte von sechs Unterteilungen einer Linie. Der Wert wird vom Berechnungsdienst geliefert, nicht aus gerundeter Länge rekonstruiert.", provenance: *ai}
+  - {id: color.4, name: Color 4, description: "Vierte von sechs Unterteilungen einer Linie; ein Strukturwert, keine sichtbare Farbe im BodyGraph.", provenance: *ai}
+  - {id: color.5, name: Color 5, description: "Fünfte von sechs Unterteilungen einer Linie. Ihr Deutungsthema ergibt sich erst aus dem jeweiligen Variablenkontext.", provenance: *ai}
+  - {id: color.6, name: Color 6, description: "Sechste von sechs Unterteilungen einer Linie. Eine höhere Zahl bezeichnet keine höhere Qualität.", provenance: *ai}
+  - {id: tone.1, name: Tone 1, description: "Erste von sechs Unterteilungen einer Color. Tone ist ein Strukturbegriff, kein gemessener Klang.", provenance: *ai}
+  - {id: tone.2, name: Tone 2, description: "Zweite von sechs Unterteilungen einer Color. Die Zahl wird getrennt von Linie und Color gespeichert.", provenance: *ai}
+  - {id: tone.3, name: Tone 3, description: "Dritte von sechs Unterteilungen einer Color; im üblichen Variablenschema Teil der linksorientierten Gruppe.", provenance: *ai}
+  - {id: tone.4, name: Tone 4, description: "Vierte von sechs Unterteilungen einer Color; im üblichen Variablenschema Teil der rechtsorientierten Gruppe.", provenance: *ai}
+  - {id: tone.5, name: Tone 5, description: "Fünfte von sechs Unterteilungen einer Color. Kontextbezogene Begriffe wie Kognition sind von der Zahl selbst zu unterscheiden.", provenance: *ai}
+  - {id: tone.6, name: Tone 6, description: "Sechste von sechs Unterteilungen einer Color. Der Wert benötigt eine hinreichend genaue Berechnung der Aktivierung.", provenance: *ai}
+  - {id: base.1, name: Base 1, description: "Erste von fünf Unterteilungen eines Tone. Gespeichert wird der gelieferte Wert, ohne daraus eine persönliche Eigenschaft abzuleiten.", provenance: *ai}
+  - {id: base.2, name: Base 2, description: "Zweite von fünf Unterteilungen eines Tone; eine feinere Strukturstufe als Color oder Linie.", provenance: *ai}
+  - {id: base.3, name: Base 3, description: "Dritte von fünf Unterteilungen eines Tone. Gerundete Längenwerte reichen nicht immer zur zuverlässigen Nachberechnung.", provenance: *ai}
+  - {id: base.4, name: Base 4, description: "Vierte von fünf Unterteilungen eines Tone. Die Zahl ist keine Bewertung einer Person.", provenance: *ai}
+  - {id: base.5, name: Base 5, description: "Fünfte von fünf Unterteilungen eines Tone. Fehlende API-Werte bleiben unbekannt, statt durch Vermutungen ersetzt zu werden.", provenance: *ai}
+  - {id: digestion.appetite, name: Appetit, description: "Traditioneller Name der ersten Determination-Color. Er bezeichnet eine Systemkategorie, keinen ermittelten Nahrungsbedarf.", provenance: *ai}
+  - {id: digestion.taste, name: Geschmack, description: "Traditioneller Name der zweiten Determination-Color; daraus folgt keine Empfehlung für Auswahl oder Ausschluss von Lebensmitteln.", provenance: *ai}
+  - {id: digestion.thirst, name: Durst, description: "Traditioneller Name der dritten Determination-Color, keine Aussage über individuellen Flüssigkeitsbedarf.", provenance: *ai}
+  - {id: digestion.touch, name: Berührung, description: "Traditioneller Name der vierten Determination-Color; ein interpretativer Begriff, kein medizinischer Befund.", provenance: *ai}
+  - {id: digestion.sound, name: Klang, description: "Traditioneller Name der fünften Determination-Color. Eine gesundheitliche Wirkung von Geräuschbedingungen wird dadurch nicht belegt.", provenance: *ai}
+  - {id: digestion.light, name: Licht, description: "Traditioneller Name der sechsten Determination-Color; daraus wird hier keine Empfehlung zu Essenszeiten abgeleitet.", provenance: *ai}
+  - {id: environment.caves, name: Höhlen, description: "Eine systeminterne Umgebungsmetapher, die überschaubare und begrenzte Räume thematisiert, nicht die Pflicht zu einem bestimmten Wohnstil.", provenance: *ai}
+  - {id: environment.markets, name: Märkte, description: "Eine Umgebungsmetapher für Austausch und Auswahl. Gemeint ist eine Deutungskategorie, kein notwendiger Aufenthaltsort.", provenance: *ai}
+  - {id: environment.kitchens, name: Küchen, description: "Eine Umgebungsmetapher für Zusammenbringen und Umwandeln, nicht auf den wörtlichen Küchenraum beschränkt.", provenance: *ai}
+  - {id: environment.mountains, name: Berge, description: "Eine Umgebungsmetapher für Abstand und Übersicht. Sie begründet keine allgemeine Empfehlung für Höhenlagen.", provenance: *ai}
+  - {id: environment.valleys, name: Täler, description: "Eine Umgebungsmetapher für Wege, Austausch und erreichbare Informationen, keine geographische Vorschrift.", provenance: *ai}
+  - {id: environment.shores, name: Ufer, description: "Eine Umgebungsmetapher für Übergänge zwischen Bereichen. Ob ein Ort passt, lässt sich nicht allein aus dieser Kategorie bestimmen.", provenance: *ai}
+  - {id: perspective.survival, name: Überleben, description: "Ein systeminterner Perspektivbegriff für Aufmerksamkeit auf Bestand und Absicherung; keine Vorhersage einer Gefährdung.", provenance: *ai}
+  - {id: perspective.possibility, name: Möglichkeit, description: "Ein Perspektivbegriff für die Betrachtung dessen, was denkbar werden könnte, ohne dessen Eintritt zu behaupten.", provenance: *ai}
+  - {id: perspective.power, name: Macht, description: "Ein Perspektivbegriff für Aufmerksamkeit auf Einfluss und Kräfteverhältnisse, keine Zuschreibung persönlichen Machtstrebens.", provenance: *ai}
+  - {id: perspective.wanting, name: Wollen, description: "Ein Perspektivbegriff für Aufmerksamkeit auf Gewünschtes oder Fehlendes; nicht mit der Motivationskategorie gleichzusetzen.", provenance: *ai}
+  - {id: perspective.probability, name: Wahrscheinlichkeit, description: "Ein Perspektivbegriff für erwartbare Entwicklungen. Er verleiht keine statistisch nachgewiesene Prognosefähigkeit.", provenance: *ai}
+  - {id: perspective.personal, name: Persönlich, description: "Ein Perspektivbegriff für den Bezug zur eigenen Erfahrung, keine Behauptung von Egoismus.", provenance: *ai}
+  - {id: motivation.fear, name: Angst, description: "Ein systeminterner Motivationsname, der mit Erkundung und Absicherung verbunden wird; keine Diagnose von Ängstlichkeit.", provenance: *ai}
+  - {id: motivation.hope, name: Hoffnung, description: "Ein Motivationsbegriff für das Offenhalten eines möglichen guten Verlaufs, nicht für dessen garantierten Eintritt.", provenance: *ai}
+  - {id: motivation.desire, name: Verlangen, description: "Ein Motivationsbegriff für Veränderungswünsche und Beteiligung; die Kategorie beweist kein konkretes persönliches Begehren.", provenance: *ai}
+  - {id: motivation.need, name: Bedürfnis, description: "Ein Motivationsbegriff für Aufmerksamkeit auf das Erforderliche. Tatsächliche Bedürfnisse müssen unabhängig vom Chart geklärt werden.", provenance: *ai}
+  - {id: motivation.guilt, name: Schuld, description: "Ein traditioneller Kategoriename, hier als Reflexion über Verantwortung und Verbesserung verstanden; keine moralische Schuldzuweisung.", provenance: *ai}
+  - {id: motivation.innocence, name: Unschuld, description: "Ein Motivationsbegriff für Beteiligung ohne festes Veränderungsziel, kein Urteil über moralischen Wert.", provenance: *ai}
+  - {id: cognition.smell, name: Geruch, description: "Eine traditionelle Kognitionskategorie. Sie belegt weder besondere Riechleistung noch eine medizinische Sinnesfunktion.", provenance: *ai}
+  - {id: cognition.taste, name: Geschmack, description: "Eine traditionelle Kognitionskategorie, zu unterscheiden von der gleichnamigen Determination-Color.", provenance: *ai}
+  - {id: cognition.outer-vision, name: Äußeres Sehen, description: "Eine systeminterne Kategorie mit Bezug auf visuelle Eindrücke, kein Ergebnis einer Sehprüfung.", provenance: *ai}
+  - {id: cognition.inner-vision, name: Inneres Sehen, description: "Eine systeminterne Kategorie mit Bezug auf innere Vorstellungen, keine Behauptung übersinnlicher Wahrnehmung.", provenance: *ai}
+  - {id: cognition.feeling, name: Fühlen, description: "Ein traditioneller Kognitionsname. Er ist nicht automatisch mit emotionaler Autorität oder einem medizinischen Tastsinn gleichzusetzen.", provenance: *ai}
+  - {id: cognition.touch, name: Berühren, description: "Eine traditionelle Kognitionskategorie mit Bezug auf Kontakt. Der Kategoriename allein belegt keine besondere sensorische Fähigkeit.", provenance: *ai}

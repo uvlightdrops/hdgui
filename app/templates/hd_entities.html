@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Human-Design-Entitäten</h1>
+<p>Beschreibungen sind pro Eintrag als KI-Entwurf oder eigener Text gekennzeichnet.
+  KI-Texte sind eigenständig formulierte Arbeitshilfen, keine Originallehre und keine persönlichen Befunde.
+  Human Design ist ein interpretatives, wissenschaftlich nicht bestätigtes System.</p>
+<p>Texte ersetzen: Katalog mit <code>python -m app.hd_catalog export</code> exportieren,
+  bearbeiten und ausdrücklich wieder importieren. Berechnungen ändern diese Texte nicht.</p>
+<nav aria-label="Entitäten-Kategorien" class="timeline-actions">
+  {% for key, label in categories.items() %}
+  <a href="/knowledge/entities?category={{ key }}" {% if key == category %}aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+<h2>{{ categories[category] }}</h2>
+{% if category == "gate-line" %}
+<p>384 feste Textplätze verbinden Tor und Linie. Die sechs allgemeinen Linienthemen ersetzen keine spezifische Torlinien-Deutung.</p>
+{% elif category == "cross" %}
+<p>Hier erscheinen ausdrücklich importierte oder aus gespeicherten Geburtsberechnungen erfasste Kreuze,
+  kein vollständiges Kreuz-Verzeichnis. Neue Namen stammen aus dem Berechnungsdienst;
+  Deutungstexte werden dabei nicht übernommen. Tor-Reihenfolge: Persönlichkeit Sonne/Erde, Design Sonne/Erde.</p>
+{% elif category in ["digestion", "cognition", "environment"] %}
+<p>Diese Begriffe sind systeminterne Kategorien, keine Ernährungs-, Gesundheits- oder Wohnempfehlungen.</p>
+{% endif %}
+{% for entity in entities %}
+<article id="{{ entity.id }}">
+  <h3>{{ entity.name }}</h3>
+  <p><code>{{ entity.id }}</code>{% if entity.structure %} · {{ entity.structure | tojson }}{% endif %}</p>
+  {% if entity.description %}
+  <p>{{ entity.description }}</p>
+  <p class="timeline-muted">
+    {% if entity.description_origin == "ai" %}<strong>KI-Entwurf</strong>{% else %}<strong>Eigener Text</strong>{% endif %}
+    · {{ entity.description_author }}{% if entity.description_model %} · {{ entity.description_model }}{% endif %}
+    · {{ entity.description_date }} · {% if entity.review_status == "reviewed" %}als geprüft markiert{% else %}ungeprüfter Entwurf{% endif %}
+  </p>
+  {% else %}
+  <p class="timeline-muted">Noch kein Beschreibungstext. Eigenen Text verfassen oder Entitätentexte importieren.</p>
+  {% endif %}
+</article>
+{% else %}
+<p>Noch keine Einträge in dieser Kategorie.</p>
+{% endfor %}
+{% endblock %}

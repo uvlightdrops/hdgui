@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint,
+    Boolean, CheckConstraint, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -106,6 +106,9 @@ class BirthProfile(Base):
         back_populates="profile", cascade="all, delete-orphan", passive_deletes=True,
         order_by="(BirthActivation.source.desc(), BirthActivation.id)",
     )
+    birth_chart: Mapped["BirthChart | None"] = relationship(
+        back_populates="profile", cascade="all, delete-orphan", passive_deletes=True,
+    )
 
 
 class BirthActivation(Base):
@@ -116,6 +119,9 @@ class BirthActivation(Base):
         CheckConstraint("gate BETWEEN 1 AND 64", name="ck_birth_activation_gate"),
         CheckConstraint("line BETWEEN 1 AND 6", name="ck_birth_activation_line"),
         CheckConstraint("longitude >= 0 AND longitude < 360", name="ck_birth_activation_longitude"),
+        CheckConstraint("color BETWEEN 1 AND 6", name="ck_birth_activation_color"),
+        CheckConstraint("tone BETWEEN 1 AND 6", name="ck_birth_activation_tone"),
+        CheckConstraint("base BETWEEN 1 AND 5", name="ck_birth_activation_base"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -130,5 +136,65 @@ class BirthActivation(Base):
         Integer, ForeignKey("gates.number", name="fk_birth_activation_gate", ondelete="RESTRICT"),
         nullable=False)
     line: Mapped[int] = mapped_column(Integer, nullable=False)
+    color: Mapped[int | None] = mapped_column(Integer)
+    tone: Mapped[int | None] = mapped_column(Integer)
+    base: Mapped[int | None] = mapped_column(Integer)
+    harmonic_gate: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("gates.number", name="fk_activation_harmonic_gate", ondelete="RESTRICT"),
+    )
 
     profile: Mapped[BirthProfile] = relationship(back_populates="activations")
+
+
+class HdEntity(Base):
+    """Stable concept identity/structure, independently replaceable editorial text."""
+    __tablename__ = "hd_entities"
+    __table_args__ = (
+        CheckConstraint("description_origin IN ('unwritten', 'ai', 'human')", name="ck_hd_text_origin"),
+        CheckConstraint("review_status IN ('draft', 'reviewed')", name="ck_hd_text_review"),
+    )
+
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    category: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    structure: Mapped[dict] = mapped_column(JSON, nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    description_origin: Mapped[str] = mapped_column(String(12), nullable=False, default="unwritten")
+    description_author: Mapped[str | None] = mapped_column(String(200))
+    description_model: Mapped[str | None] = mapped_column(String(100))
+    description_date: Mapped[str | None] = mapped_column(String(10))
+    review_status: Mapped[str] = mapped_column(String(12), nullable=False, default="draft")
+
+
+class BirthChart(Base):
+    """Latest individual natal calculation, separate from SVG and editable catalog texts."""
+    __tablename__ = "birth_charts"
+    __table_args__ = (
+        CheckConstraint("schema_version = 1", name="ck_birth_chart_schema"),
+    )
+
+    profile_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("birth_profiles.id", name="fk_birth_chart_profile", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    calculation_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    engine_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    api_endpoint: Mapped[str] = mapped_column(String(40), nullable=False)
+    calculated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    birth_utc: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    design_utc: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    type_id: Mapped[str | None] = mapped_column(ForeignKey("hd_entities.id", ondelete="RESTRICT"))
+    authority_id: Mapped[str | None] = mapped_column(ForeignKey("hd_entities.id", ondelete="RESTRICT"))
+    hd_profile_id: Mapped[str] = mapped_column(ForeignKey("hd_entities.id", ondelete="RESTRICT"))
+    definition_id: Mapped[str | None] = mapped_column(ForeignKey("hd_entities.id", ondelete="RESTRICT"))
+    incarnation_cross_id: Mapped[str] = mapped_column(ForeignKey("hd_entities.id", ondelete="RESTRICT"))
+    general: Mapped[dict] = mapped_column(JSON, nullable=False)
+    variables: Mapped[dict] = mapped_column(JSON, nullable=False)
+    centers: Mapped[dict] = mapped_column(JSON, nullable=False)
+    channels: Mapped[list] = mapped_column(JSON, nullable=False)
+    catalog_links: Mapped[dict] = mapped_column(JSON, nullable=False)
+    unmapped_values: Mapped[dict] = mapped_column(JSON, nullable=False)
+    raw_response: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+    profile: Mapped[BirthProfile] = relationship(back_populates="birth_chart")

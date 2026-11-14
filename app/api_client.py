@@ -8,6 +8,7 @@ from xml.etree.ElementTree import ParseError
 from app.config import Settings
 from app.models import BirthProfile
 from app.natal import NatalActivations
+from app.natal_details import NatalDetails
 from app.transit import TransitFrame, TransitPosition
 
 
@@ -69,12 +70,14 @@ class ChartClient:
         try:
             gates = payload["gates"]
             return NatalActivations(
-                personality=[TransitPosition.model_validate(item) for item in gates["prs"]["Planets"]],
-                design=[TransitPosition.model_validate(item) for item in gates["des"]["Planets"]],
+                personality=gates["prs"]["Planets"],
+                design=gates["des"]["Planets"],
+                details=NatalDetails.model_validate(payload["general"]) if "general" in payload else None,
+                raw_response=payload,
             )
         except (KeyError, TypeError, ValidationError) as exc:
             raise ChartServiceError(
-                "Die API-Antwort enthält keine gültigen Persönlichkeits- und Design-Aktivierungen."
+                "Die API-Antwort enthält keine gültigen Geburtschart-Angaben oder Aktivierungen."
             ) from exc
 
     def render(self, profile: BirthProfile) -> str:
