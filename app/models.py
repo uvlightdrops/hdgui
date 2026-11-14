@@ -26,6 +26,9 @@ class UiSettings(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     cache_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
     autoreload: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    center_timeline_samples: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=64, server_default="64",
+    )
     # Local single-user application: one global "current" profile, no owner yet.
     active_profile_id: Mapped[str | None] = mapped_column(
         String(36),

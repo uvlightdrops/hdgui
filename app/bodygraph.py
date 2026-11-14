@@ -187,6 +187,14 @@ def render_bodygraph(frame: TransitFrame, descriptions=None, *, natal=None, defi
         "d": layout["body_outline"], "fill": "#e6e6e6", "stroke": "black", "stroke-width": ".8",
     })
     for first, second in CHANNELS:
+        group = SubElement(root, "g", {"data-possible-channel": f"{first}-{second}"})
+        for gate in (first, second):
+            SubElement(group, "path", {
+                "d": layout["channels"][str(gate)]["channel_path"],
+                "fill": "none", "stroke": "#9ca3af", "stroke-width": "1.2",
+                "stroke-opacity": ".55", "stroke-linecap": "round",
+            })
+    for first, second in CHANNELS:
         if not ({first, second} & active):
             continue
         group = SubElement(root, "g", {

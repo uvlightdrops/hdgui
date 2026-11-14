@@ -8,16 +8,27 @@
   <p id="center-graph-status" role="status" aria-live="polite"></p>
   </div>
   <div class="center-timeline-panel">
+  <div class="center-timeline-toolbar" aria-label="Zeitraum-Ansicht">
+    <span id="center-view-label" class="timeline-muted" aria-live="polite"></span>
+    <div class="center-zoom-controls" aria-label="Zeitskala vergrößern oder verkleinern">
+      <button id="center-zoom-out" type="button" aria-label="Zeitskala verkleinern" disabled>−</button>
+      <button id="center-zoom-in" type="button" aria-label="Zeitskala vergrößern" disabled>+</button>
+    </div>
+  </div>
   <div id="center-tracks" aria-label="Zentrum-Spuren"></div>
+  <div id="center-time-axis" class="center-time-axis" role="group" aria-label="Zeitskala in UTC"></div>
   </div>
   </div>
   <div class="center-controls">
+  <details>
+  <summary>Zeitraum anpassen (Von / Bis)</summary>
   <form id="center-range" class="timeline-panel timeline-range">
     <label>Von (UTC)<input name="start" type="datetime-local" value="{{ start }}" min="1900-01-01T00:00" max="2099-12-31T23:59" required></label>
     <label>Bis (UTC)<input name="end" type="datetime-local" min="1900-01-01T00:00" max="2099-12-31T23:59" required></label>
     <label>Detailgrad<select name="samples"><option value="32">Schnell · bis 32 Punkte</option><option value="64" selected>Standard · bis 64 Punkte</option><option value="160">Fein · bis 160 Punkte</option></select></label>
     <button>Zeitraum laden</button>
   </form>
+  </details>
   <div class="timeline-actions">
     <button type="button" data-shift="-1">Zurück</button>
     <button type="button" data-days="1">1 Tag</button>
@@ -33,8 +44,8 @@
       {% endfor %}
     </div>
   </fieldset>
-  <label>Zeitpunkt auswählen (UTC)<input id="center-cursor" type="range" min="0" max="1000" value="0" disabled><output id="center-time"></output></label>
-  <progress id="center-progress" value="0" max="1" aria-label="Berechnete Zeitpunkte"></progress>
+  <p>Zeit: <output id="center-time"></output></p>
+  <p id="center-fill-status" role="status" aria-live="polite"></p>
   <p id="center-status" role="status" aria-live="polite"></p>
   <p class="timeline-muted"><a href="/knowledge#center-timeline">Legende &amp; Hinweise zur Abtastung</a></p>
   </div>

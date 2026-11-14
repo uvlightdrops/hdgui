@@ -74,8 +74,14 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(self.profile().birth_utc.hour, 12)
         action = f"/profiles/{profile_id}/chart"
         for _ in range(2):
-            self.assertEqual(self.client.post(action, data={"csrf": self.csrf}).text, SVG)
+            response = self.client.post(action, data={"csrf": self.csrf}, follow_redirects=False)
+            self.assertEqual(response.status_code, 303)
+            self.assertEqual(response.headers["location"], action)
         self.assertEqual(self.charts.calls, 1)
+        chart_page = self.client.get(action)
+        self.assertIn("Zur Profilübersicht", chart_page.text)
+        self.assertIn(f'src="{action}.svg"', chart_page.text)
+        self.assertEqual(self.client.get(action + ".svg").text, SVG)
         with TestClient(create_app(self.settings, self.charts)) as restarted:
             self.assertEqual(restarted.get(action + ".svg").text, SVG)
             self.assertIn("Testprofil", restarted.get("/profiles").text)

@@ -14,7 +14,10 @@ assert.deepEqual(intervals(times, data, "Head").map(item => item.active), [true,
 assert.deepEqual(intervals(times, data, "Root").map(item => item.active), [false, true, false]);
 assert.deepEqual(intervals([], data, "Head"), []);
 assert.deepEqual(intervals([0], data, "Head"), []);
-const base = {profile: {id: "p1", birth_utc: "2000-01-01T00:00:00Z"}, engine_version: "4"};
+const base = {
+    profile: {id: "p1", birth_utc: "2000-01-01T00:00:00Z"},
+    engine_version: "4", natal_centers: [{id: "Head"}],
+};
 assert.equal(profileVersion(base), profileVersion({...base, centers: [{id: "Head"}]}));
 assert.notEqual(profileVersion(base), profileVersion({...base, engine_version: "5"}));
 assert.notEqual(profileVersion({...base, calculation_version: "api-a"}),
@@ -40,7 +43,15 @@ class Element {
     replaceChildren(...nodes) { this.children = [...nodes]; }
     setAttribute(key, value) { this.attributes[key] = value; }
     addEventListener(key, callback) { this.listeners[key] = callback; }
-    fire(key, extra = {}) { this.listeners[key]?.({preventDefault() {}, ...extra}); }
+    fire(key, extra = {}) {
+        this.listeners[key]?.({preventDefault() {}, stopPropagation() {}, ...extra});
+    }
+    setPointerCapture(pointerId) { this.capturedPointer = pointerId; }
+    hasPointerCapture(pointerId) { return this.capturedPointer === pointerId; }
+    releasePointerCapture(pointerId) {
+        assert.equal(this.capturedPointer, pointerId);
+        this.capturedPointer = undefined;
+    }
     getBoundingClientRect() { return {left: 0, width: 1000}; }
 }
 
@@ -71,8 +82,9 @@ async function controllerTests() {
     const fetch = async url => {
         const parsed = new URL(url, "http://localhost");
         if (parsed.pathname === "/experiments/timeline") {
-            const start = parsed.searchParams.get("start");
-            const end = parsed.searchParams.get("end");
+            const normalize = value => new Date(Math.floor(Date.parse(value) / 1000) * 1000).toISOString();
+            const start = normalize(parsed.searchParams.get("start"));
+            const end = normalize(parsed.searchParams.get("end"));
             const mid = new Date((Date.parse(start) + Date.parse(end)) / 2).toISOString();
             return response({start, end, timestamps: [start, mid, end], step_seconds: 3600});
         }
@@ -87,14 +99,26 @@ async function controllerTests() {
             if (predicate()) return;
             await new Promise(resolve => setTimeout(resolve, 5));
         }
-        throw new Error("Controller did not reach expected state");
+        throw new Error(`Controller did not reach expected state: ${get("center-status").textContent}`);
     };
     const fulfill = (request, changed = false) => request.resolve({
         ...base, profile: {...base.profile, id: changed ? "p2" : "p1"},
         timestamp: request.timestamp, ...frame("Head"), svg: "<svg>selected graph</svg>",
     });
+    const fulfillExtension = async expectedCalls => {
+        for (let i = 0; i < 200; i++) {
+            while (pending.length) fulfill(pending.shift());
+            if (calls >= expectedCalls && get("center-fill-status").textContent.includes("gesichert")) return;
+            await new Promise(resolve => setTimeout(resolve, 5));
+        }
+        throw new Error(`Extension did not complete: ${get("center-fill-status").textContent}; ${get("center-view-label").textContent}; zoom disabled=${get("center-zoom-out").disabled}`);
+    };
+    const documentListeners = {};
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../app/static/center-timeline.js"), "utf8"), {
-        document: {getElementById: get, createElement: () => new Element()},
+        document: {
+            getElementById: get, createElement: () => new Element(),
+            addEventListener: (name, callback) => { documentListeners[name] = callback; },
+        },
         fetch, URLSearchParams, Date, AbortController,
         setTimeout: callback => setTimeout(callback, 1), clearTimeout,
     });
@@ -103,26 +127,125 @@ async function controllerTests() {
         const request = pending.shift();
         assert.equal(request.graph, i === 0 ? "true" : "false");
         fulfill(request);
+        await waitFor(() => get("center-status").textContent.startsWith(`${Math.round((i + 1) / 3 * 100)} %`));
     }
     await waitFor(() => get("center-status").textContent.includes("vollständig"));
-    assert.equal(get("center-progress").value, 3);
-    assert.equal(get("center-tracks").children.length, 3, "Two stacked tracks plus the time axis");
+    assert.match(get("center-status").textContent, /^100 % berechnet/);
+    assert.equal(ids.has("center-progress"), false, "Loading uses a percentage without a progress widget");
+    assert.equal(boxes[0].checked, false, "Natal-defined centers are hidden by default");
+    assert.equal(boxes[1].checked, true, "Centers not defined at birth remain visible");
+    assert.equal(get("center-tracks").children.length, 1, "Only non-natal-defined centers are rendered");
+    assert.ok(get("center-time-axis").children.length >= 5, "Time axis has labeled unit ticks");
+    const fullTicks = get("center-time-axis").children.map(tick => tick.dataset.timestamp);
+    const fullView = get("center-view-label").textContent;
+    assert.match(fullView, /Einteilung:.*Ansicht:.*UTC/);
+    assert.equal(get("center-zoom-out").disabled, false);
+    get("center-zoom-in").fire("click");
+    assert.notEqual(get("center-view-label").textContent, fullView, "Zoom reports and changes the visible scale");
+    assert.notDeepEqual(
+        get("center-time-axis").children.map(tick => tick.dataset.timestamp), fullTicks,
+        "Zoom updates the marked scale units",
+    );
+    assert.equal(get("center-zoom-out").disabled, false);
+    const axisMarker = () => get("center-time-axis").children
+        .find(item => item.className === "center-axis-marker");
+    const trackMarker = () => get("center-tracks").children[0].children[1].children
+        .find(item => item.className === "center-marker");
+    assert.equal(axisMarker().style.left, trackMarker().style.left,
+        "Selected time marker aligns on the time axis and center tracks");
+    const track = get("center-tracks").children[0].children[1];
+    track.fire("pointerdown", {clientX: 500, isPrimary: true, pointerType: "mouse", button: 0, pointerId: 1});
+    documentListeners.pointermove({clientX: 400, pointerId: 1});
+    documentListeners.pointerup({pointerId: 1});
+    assert.notEqual(get("center-time-axis").children[0].dataset.timestamp, fullTicks[0],
+        "Dragging a zoomed timeline pans the visible time range");
+    await waitFor(() => pending.length === 1);
+    fulfill(pending.shift());
+    await waitFor(() => get("center-graph-status").textContent.includes("Definiert"));
+    const zoomedView = get("center-view-label").textContent;
+    const callsBeforeFirstFill = calls;
+    get("center-zoom-out").fire("click");
+    await fulfillExtension(callsBeforeFirstFill + 2);
+    assert.notEqual(get("center-view-label").textContent, zoomedView, "Zoom out expands the visible scale");
+    const callsBeforeSecondFill = calls;
+    get("center-zoom-out").fire("click");
+    await fulfillExtension(callsBeforeSecondFill + 3);
+    assert.ok(
+        get("center-fill-status").textContent.includes("gesichert"),
+        "New samples are loaded and cached when zooming out",
+    );
+    const callsAfterFill = calls;
+    get("center-zoom-in").fire("click");
+    get("center-zoom-out").fire("click");
+    assert.equal(calls, callsAfterFill, "Already loaded time ranges are not fetched again");
     assert.match(get("center-graph").innerHTML, /selected graph/);
     boxes[0].checked = false;
     boxes[0].fire("change");
-    assert.equal(get("center-tracks").children.length, 2);
-    assert.equal(calls, 3, "Toggling tracks must not recalculate");
+    assert.equal(get("center-tracks").children.length, 1);
+    assert.equal(calls, callsAfterFill, "Toggling tracks must not recalculate");
     form.fire("submit");
     await waitFor(() => pending.length === 1);
     fulfill(pending.shift());
     await waitFor(() => get("center-status").textContent.includes("vollständig"));
-    assert.equal(calls, 4, "Reload validates first sample, then reuses cached window samples");
-    get("center-cursor").value = "250";
-    get("center-cursor").fire("input");
+    assert.equal(calls, callsAfterFill + 1, "Reload validates first sample, then reuses cached window samples");
+
+    const ticksBeforeMarkerDrag = get("center-time-axis").children.map(tick => tick.dataset.timestamp);
+    let stopped = false;
+    trackMarker().fire("pointerdown", {
+        clientX: 0, isPrimary: true, pointerType: "mouse", button: 0, pointerId: 2,
+        stopPropagation() { stopped = true; },
+    });
+    assert.ok(stopped, "Marker pointerdown must not start a bar pan");
+    assert.equal(root.capturedPointer, 2, "Capture survives replacement of the rendered marker");
+    documentListeners.pointermove({clientX: 333.7, pointerId: 9});
+    assert.equal(axisMarker().style.left, "0%", "Other pointers cannot move the marker");
+    documentListeners.pointermove({clientX: 333.7, pointerId: 2});
+    assert.ok(parseFloat(trackMarker().style.left) > 33, "Marker follows the pointer continuously");
+    documentListeners.pointermove({clientX: 433.7, pointerId: 2});
+    documentListeners.pointerup({pointerId: 9});
+    assert.equal(root.capturedPointer, 2, "Other pointers cannot finish a drag");
+    documentListeners.pointerup({pointerId: 2});
+    assert.equal(root.capturedPointer, undefined, "Marker drag releases capture");
+    assert.deepEqual(get("center-time-axis").children.map(tick => tick.dataset.timestamp), ticksBeforeMarkerDrag,
+        "Dragging the marker never pans the visible time range");
+    assert.equal(axisMarker().style.left, trackMarker().style.left);
+    await waitFor(() => pending.length === 1);
+    const markerSelection = pending.shift();
+    assert.equal(markerSelection.timestamp,
+        new Date(Date.parse(fields.start.value + "Z") + Math.round(7 * 86400 * 0.4337) * 1000).toISOString(),
+        "Marker requests the exact selected second, not a sampled frame or quantized slider step");
+    assert.equal(markerSelection.graph, "true");
+    fulfill(markerSelection);
+    await waitFor(() => get("center-graph-status").textContent.includes("Definiert"));
+
+    axisMarker().fire("pointerdown", {
+        clientX: 433.7, isPrimary: true, pointerType: "mouse", button: 0, pointerId: 3,
+    });
+    documentListeners.pointermove({clientX: 2000, pointerId: 3});
+    assert.equal(trackMarker().style.left, "100%", "Axis marker clamps to the visible range");
+    documentListeners.pointercancel({pointerId: 3});
+    assert.equal(root.capturedPointer, undefined, "Pointer cancellation releases capture");
+    documentListeners.pointermove({clientX: 0, pointerId: 3});
+    assert.equal(trackMarker().style.left, "100%", "Cancelled drag no longer moves the marker");
+    await waitFor(() => pending.length === 1);
+    fulfill(pending.shift());
+    await waitFor(() => get("center-graph-status").textContent.includes("Definiert"));
+
+    axisMarker().fire("pointerdown", {
+        clientX: 1000, isPrimary: true, pointerType: "mouse", button: 0, pointerId: 5,
+    });
+    root.capturedPointer = undefined;
+    root.fire("lostpointercapture", {pointerId: 5});
+    documentListeners.pointermove({clientX: 0, pointerId: 5});
+    assert.equal(trackMarker().style.left, "100%", "Losing capture terminates the marker drag");
+
+    const selectTrackTime = clientX => {
+        get("center-tracks").children[0].children[1].fire("click", {clientX});
+    };
+    selectTrackTime(250);
     await waitFor(() => pending.length === 1);
     const oldSelection = pending.shift();
-    get("center-cursor").value = "750";
-    get("center-cursor").fire("input");
+    selectTrackTime(750);
     await waitFor(() => pending.length === 1);
     const newSelection = pending.shift();
     fulfill(oldSelection);
@@ -130,12 +253,30 @@ async function controllerTests() {
     await waitFor(() => get("center-graph-status").textContent.includes("Definiert"));
     assert.match(get("center-graph-status").textContent, /30\.10\.2026/, "Only the latest cursor response is displayed");
 
+    const pan = delta => {
+        get("center-tracks").children[0].children[1].fire("pointerdown", {
+            clientX: 500, isPrimary: true, pointerType: "mouse", button: 0, pointerId: 4,
+        });
+        documentListeners.pointermove({clientX: 500 + delta, pointerId: 4});
+        documentListeners.pointerup({pointerId: 4});
+    };
+    const selectedBeforePan = get("center-time").textContent;
+    const callsBeforePan = calls;
+    pan(100);
+    assert.equal(get("center-time").textContent, selectedBeforePan, "Pan keeps a still-visible selection");
+    await fulfillExtension(callsBeforePan + 2);
+    assert.equal(calls, callsBeforePan + 2, "Pan loads exposed samples even without changing selection");
+    pan(-100);
+    pan(100);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    assert.equal(calls, callsBeforePan + 2, "Returning to loaded periods reuses samples");
+
     form.fire("submit");
     await waitFor(() => pending.length === 1);
     pending.shift().resolve({detail: "Dienst offline"}, 502);
     await waitFor(() => get("center-status").textContent.includes("Dienst offline"));
     assert.equal(get("center-status").attributes.role, "alert");
-    assert.equal(get("center-cursor").disabled, true);
+    assert.equal(ids.has("center-cursor"), false, "Timeline no longer uses a separate time slider");
     assert.match(get("center-graph").children[0].textContent, /Keine gültigen/);
 
     fields.start.value = "2027-01-01T00:00";
@@ -150,7 +291,9 @@ async function controllerTests() {
     await waitFor(() => pending.length === 1);
     fulfill(pending.shift(), true);
     await waitFor(() => get("center-status").textContent.includes("Geburtsprofil wurde geändert"));
-    assert.equal(get("center-cursor").disabled, true);
+    const callsAfterProfileChange = calls;
+    selectTrackTime(500);
+    assert.equal(calls, callsAfterProfileChange, "Selection stays disabled after a profile change");
     assert.match(get("center-graph").children[0].textContent, /Darstellung verworfen/);
     console.log("Center timeline controller: loading, tracks, exact selection, stale requests, retry and profile changes passed.");
 }

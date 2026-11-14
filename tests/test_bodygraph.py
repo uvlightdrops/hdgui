@@ -50,3 +50,20 @@ class BodyGraphTests(unittest.TestCase):
         self.assertEqual({gate for _, _, gates in CENTERS.values() for gate in gates},
                          set(range(1, 65)))
         self.assertEqual(len(CHANNELS), 36)
+
+    def test_all_possible_channels_are_drawn_faintly_without_activations(self):
+        frame = TransitFrame(timestamp_utc=datetime(2026, 10, 8, tzinfo=UTC), positions=[
+            TransitPosition(body="Sun", longitude=0, gate=64, line=1),
+        ])
+        root = ElementTree.fromstring(render_bodygraph(frame))
+        groups = [item for item in root.iter() if "data-possible-channel" in item.attrib]
+        self.assertEqual(len(groups), len(CHANNELS))
+        self.assertEqual(
+            {item.get("data-possible-channel") for item in groups},
+            {f"{first}-{second}" for first, second in CHANNELS},
+        )
+        for group in groups:
+            paths = list(group)
+            self.assertEqual(len(paths), 2)
+            self.assertTrue(all(path.get("stroke-opacity") == ".55" for path in paths))
+            self.assertTrue(all(path.get("stroke-width") == "1.2" for path in paths))

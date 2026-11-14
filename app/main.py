@@ -34,11 +34,17 @@ from app.transit_service import TransitCache
 
 ROOT = Path(__file__).parent
 CACHE_OPTIONS = ((60, "1m"), (300, "5m"), (600, "10m"), (1800, "30m"), (3600, "1h"))
+TIMELINE_SAMPLE_OPTIONS = (
+    (32, "Schnell · bis 32 Punkte"),
+    (64, "Standard · bis 64 Punkte"),
+    (160, "Fein · bis 160 Punkte"),
+)
 
 
 class SettingsInput(BaseModel):
     cache_seconds: Literal[60, 300, 600, 1800, 3600]
     autoreload: bool
+    center_timeline_samples: Literal[32, 64, 160] = 64
 
 
 def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
@@ -293,7 +299,8 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     def settings_page(request, values, errors=None, status=200):
         return templates.TemplateResponse(
             request=request, name="settings.html",
-            context={"values": values, "options": CACHE_OPTIONS, "csrf": token(request),
+            context={"values": values, "options": CACHE_OPTIONS,
+                     "timeline_sample_options": TIMELINE_SAMPLE_OPTIONS, "csrf": token(request),
                      "errors": errors or []},
             status_code=status,
         )
@@ -304,7 +311,11 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
             preferences = session.get(UiSettings, 1)
             if preferences is None:
                 raise HTTPException(500, "Einstellungen fehlen. Bitte Alembic-Migrationen ausführen.")
-            values = {"cache_seconds": preferences.cache_seconds, "autoreload": preferences.autoreload}
+            values = {
+                "cache_seconds": preferences.cache_seconds,
+                "autoreload": preferences.autoreload,
+                "center_timeline_samples": preferences.center_timeline_samples,
+            }
         return settings_page(request, values)
 
     @app.post("/settings")
@@ -312,9 +323,17 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         form = await request.form()
         check_csrf(request, form)
         raw_seconds = str(form.get("cache_seconds", ""))
+        with sessions() as session:
+            preferences = session.get(UiSettings, 1)
+            if preferences is None:
+                raise HTTPException(500, "Einstellungen fehlen. Bitte Alembic-Migrationen ausführen.")
+            current_samples = preferences.center_timeline_samples
+        raw_samples = str(form.get("center_timeline_samples", current_samples))
         values = {
             "cache_seconds": int(raw_seconds) if raw_seconds in {str(v) for v, _ in CACHE_OPTIONS} else 0,
             "autoreload": form.get("autoreload", ""),
+            "center_timeline_samples": int(raw_samples)
+            if raw_samples in {str(v) for v, _ in TIMELINE_SAMPLE_OPTIONS} else 0,
         }
         try:
             data = SettingsInput.model_validate(values)
@@ -326,6 +345,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                 raise HTTPException(500, "Einstellungen fehlen. Bitte Alembic-Migrationen ausführen.")
             preferences.cache_seconds = data.cache_seconds
             preferences.autoreload = data.autoreload
+            preferences.center_timeline_samples = data.center_timeline_samples
         return RedirectResponse("/settings", status_code=303)
 
     @app.get("/profiles/{profile_id}/edit")
@@ -418,7 +438,20 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                 )
                 if result.rowcount != 1:
                     raise HTTPException(409, "Profil wurde geändert. Bitte erneut berechnen.")
-        return RedirectResponse(f"/profiles/{profile_id}/chart.svg", status_code=303)
+        return RedirectResponse(f"/profiles/{profile_id}/chart", status_code=303)
+
+    @app.get("/profiles/{profile_id}/chart")
+    def chart_page(request: Request, profile_id: str):
+        with sessions() as session:
+            profile = get_profile(session, profile_id)
+        key = chart_key(profile.birth_utc, settings.api_url, settings.engine_version)
+        if not profile.chart_svg or profile.chart_key != key:
+            raise HTTPException(404, "Kein aktuelles Chart gespeichert. Bitte berechnen.")
+        return templates.TemplateResponse(
+            request=request, name="profile_chart.html",
+            context={"profile": profile, "csrf": token(request)},
+            headers={"Cache-Control": "no-store"},
+        )
 
     @app.get("/profiles/{profile_id}/chart.svg")
     def svg(profile_id: str):
