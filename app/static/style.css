@@ -37,6 +37,13 @@ footer { color: #aab6c8; font-size: .9rem; }
 }
 .gate-index { display: flex; flex-wrap: wrap; gap: .25rem; margin-bottom: .75rem; }
 .gate-index a { padding: .3rem; min-width: 1.5rem; text-align: center; }
+.knowledge-navigation, .knowledge-content, .catalog-page { min-width: 0; overflow-wrap: anywhere; }
+.knowledge-topics, .knowledge-categories, .knowledge-entries { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+.knowledge-topics a, .knowledge-categories a, .knowledge-entries a { padding: .55rem .75rem; border: 1px solid #52627a; border-radius: .4rem; max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
+.knowledge-topics a[aria-current], .knowledge-categories a[aria-current], .knowledge-entries a[aria-current], .gate-index a[aria-current] { background: #344356; color: #fff; font-weight: 700; text-decoration: underline; }
+.knowledge-content article { margin: 1rem 0; }
+.knowledge-facts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: .5rem; }
+.knowledge-facts dd { margin: 0; overflow-wrap: anywhere; }
 .gate-description { margin-bottom: .5rem; scroll-margin-top: 1rem; padding: .65rem .9rem; border-radius: .5rem; font-size: .9rem; line-height: 1.4; }
 .gate-description h2 { font-size: 1.05rem; margin: 0 0 .3rem; }
 .gate-description p { margin: .25rem 0 0; }
@@ -203,3 +210,8 @@ button.link-button:hover { color: #a8f1df; }
 .timeline-natal-band.design { background: #ff6b6b; opacity: .55; border-bottom: 2px dashed #ff6b6b; }
 .timeline-natal details { flex-basis: 100%; }
 #timeline-natal-status { flex-basis: 100%; margin: 0; }
+@media (max-width: 480px) {
+  .sidebar { position: static; width: 100%; max-height: none; border-right: 0; border-bottom: 1px solid #344356; }
+  .page { margin-left: 0; }
+  .knowledge-facts { grid-template-columns: minmax(0, 1fr); }
+}

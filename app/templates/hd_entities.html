@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Human-Design-Entitäten</h1>
+<section class="knowledge-content">
+<h2>{{ categories[category] }}</h2>
 <p>Beschreibungen sind pro Eintrag als KI-Entwurf oder eigener Text gekennzeichnet.
   KI-Texte sind eigenständig formulierte Arbeitshilfen, keine Originallehre und keine persönlichen Befunde.
   Human Design ist ein interpretatives, wissenschaftlich nicht bestätigtes System.</p>
 <p>Texte ersetzen: Katalog mit <code>python -m app.hd_catalog export</code> exportieren,
   bearbeiten und ausdrücklich wieder importieren. Berechnungen ändern diese Texte nicht.</p>
-<nav aria-label="Entitäten-Kategorien" class="timeline-actions">
-  {% for key, label in categories.items() %}
-  <a href="/knowledge/entities?category={{ key }}" {% if key == category %}aria-current="page"{% endif %}>{{ label }}</a>
-  {% endfor %}
-</nav>
-<h2>{{ categories[category] }}</h2>
+{% if category == "body" %}
+<p><a href="/knowledge/celestial-bodies">Himmelskörper: astrologische Symbole (separate Textquelle)</a></p>
+{% elif category == "profile" %}
+<p>Hier stehen die zwölf HD-Profilbegriffe, nicht die gespeicherten <a href="/profiles">Geburtsprofile</a>.</p>
+{% endif %}
 {% if category == "gate-line" %}
 <p>384 feste Textplätze verbinden Tor und Linie. Die sechs allgemeinen Linienthemen ersetzen keine spezifische Torlinien-Deutung.</p>
 {% elif category == "cross" %}
@@ -21,10 +21,24 @@
 {% elif category in ["digestion", "cognition", "environment"] %}
 <p>Diese Begriffe sind systeminterne Kategorien, keine Ernährungs-, Gesundheits- oder Wohnempfehlungen.</p>
 {% endif %}
+{% if workspace %}{% include "knowledge_entries.html" %}{% endif %}
 {% for entity in entities %}
 <article id="{{ entity.id }}">
   <h3>{{ entity.name }}</h3>
-  <p><code>{{ entity.id }}</code>{% if entity.structure %} · {{ entity.structure | tojson }}{% endif %}</p>
+  <p><code>{{ entity.id }}</code></p>
+  {% if entity.structure %}
+  <dl class="knowledge-facts">
+    {% for key, value in entity.structure.items() %}
+    <dt>{{ {"gate": "Tor", "line": "Linie", "number": "Nummer", "personality_line": "Persönlichkeitslinie", "design_line": "Designlinie", "angle": "Winkel", "gates": "Tore (P-Sonne / P-Erde / D-Sonne / D-Erde)"}.get(key, key) }}</dt>
+    <dd>{% if key == "gate" %}<a href="{{ knowledge_url('gate', 'gate.' ~ value) }}">Tor {{ value }} (BodyGraph)</a>{% elif key == "gates" %}{% for number in value %}<a href="{{ knowledge_url('gate', 'gate.' ~ number) }}">{{ number }}</a>{% if not loop.last %} / {% endif %}{% endfor %}{% else %}{{ value }}{% endif %}</dd>
+    {% endfor %}
+  </dl>
+  {% endif %}
+  {% if center_gates %}
+  <p><strong>Tore dieses Zentrums:</strong>
+    {% for gate in center_gates %}<a href="{{ knowledge_url('gate', 'gate.' ~ gate.number) }}">Tor {{ gate.number }}</a>{% if not loop.last %} · {% endif %}{% endfor %}
+  </p>
+  {% endif %}
   {% if entity.description %}
   <p>{{ entity.description }}</p>
   <p class="timeline-muted">
@@ -36,7 +50,15 @@
   <p class="timeline-muted">Noch kein Beschreibungstext. Eigenen Text verfassen oder Entitätentexte importieren.</p>
   {% endif %}
 </article>
-{% else %}
+{% else %}{% if not workspace %}
 <p>Noch keine Einträge in dieser Kategorie.</p>
+{% endif %}
 {% endfor %}
+</section>
+{% if workspace and category == "type" and not selected_entity %}
+<details>
+  <summary>Hilfe zum Zentren-Verlauf</summary>
+  {% include "knowledge_help.html" %}
+</details>
+{% endif %}
 {% endblock %}

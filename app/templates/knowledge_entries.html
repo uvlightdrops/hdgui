@@ -1,0 +1,18 @@
+{% if category == "gate-line" %}
+<nav class="gate-index" aria-label="Tor für Torlinie auswählen">
+  {% for number in range(1, 65) %}
+  <a href="{{ knowledge_url('gate-line', gate=number) }}" {% if number == selected_gate %}aria-current="page"{% endif %}>{{ number }}</a>
+  {% endfor %}
+</nav>
+{% if not selected_gate %}<p>Bitte zuerst ein Tor auswählen, dann eine seiner sechs Linien.</p>{% endif %}
+{% endif %}
+<nav class="knowledge-entries" aria-label="Eintrag auswählen">
+  {% for id, name in entry_links %}
+  <a href="{{ knowledge_url(category, id, selected_gate) }}" {% if category == "gate" %}data-activation-gate="{{ id.split('.')[1] }}"{% endif %} {% if id == selected_entity %}aria-current="page"{% endif %}>{{ name }}</a>
+  {% endfor %}
+</nav>
+{% if empty_category %}
+<p>Noch keine Einträge in dieser Kategorie.</p>
+{% elif not selected_entity and (category != "gate-line" or selected_gate) %}
+<p>Bitte einen Eintrag auswählen.</p>
+{% endif %}

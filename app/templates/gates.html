@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="catalog-page" aria-label="Torübersicht">
-<h1>Tore</h1>
+<h2>Tore</h2>
 <p>64 Tore · <a href="/channels">Alle 36 Kanäle</a></p>
 {% if current_profile and current_profile.error %}
 <p role="alert">{{ current_profile.error }}</p>
 {% elif current_profile %}
-<label><input id="catalog-activations" type="checkbox" checked data-profile-id="{{ current_profile.id }}">Aktive Tore farbig markieren: <strong>{{ current_profile.name }}</strong></label>
+<label><input id="catalog-activations" type="checkbox" {% if not workspace %}checked{% endif %} data-profile-id="{{ current_profile.id }}">Aktive Tore farbig markieren: <strong>{{ current_profile.name }}</strong></label>
+{% if workspace %}<p>Optional: Beim Einschalten werden Geburtsaktivierungen geladen und bei Bedarf berechnet.</p>{% endif %}
 <p class="catalog-legend"><span class="catalog-personality">Persönlichkeit</span> · <span class="catalog-design">Design</span> · <span class="catalog-both">Beide</span></p>
 <p id="catalog-status" role="status" aria-live="polite"></p>
 <noscript><p>Die Profilmarkierung benötigt JavaScript.</p></noscript>
@@ -14,23 +15,27 @@
 <label><input type="checkbox" disabled>Aktive Tore farbig markieren</label>
 <p><a href="/profiles">Ein Geburtsprofil als aktuell auswählen</a>, um seine aktiven Tore zu markieren.</p>
 {% endif %}
+{% if workspace %}{% include "knowledge_entries.html" %}{% else %}
 <nav class="gate-index" aria-label="Tor auswählen">
 {% for gate in gates %}<a href="#gate-{{ gate.number }}" data-activation-gate="{{ gate.number }}" title="{{ gate.name }}">{{ gate.number }}</a>{% endfor %}
 </nav>
+{% endif %}
 {% for gate in gates %}
+{% if not workspace or selected_entity == 'gate.' ~ gate.number %}
 <article class="gate-description" id="gate-{{ gate.number }}" data-activation-gate="{{ gate.number }}">
   <h2>Gate {{ gate.number }} · {{ gate.name }}</h2>
   <p class="catalog-activation" hidden></p>
   <p>{{ gate.description or 'Für dieses Tor ist noch keine Beschreibung hinterlegt.' }}</p>
-  <p><strong>Zentrum:</strong> {{ center_labels[gate.center] }}</p>
+  <p><strong>Zentrum:</strong> <a href="{{ knowledge_url('center', 'center.' ~ gate.center) }}">{{ center_labels[gate.center] }} (BodyGraph)</a></p>
   <p><strong>Verbindungen:</strong>
   {% for channel in relations[gate.number] %}
     {% set partner = channel.gate_b if channel.gate_a == gate.number else channel.gate_a %}
-    <a href="/channels#channel-{{ channel.gate_a }}-{{ channel.gate_b }}" title="{{ channel.description or 'Keine Kanalbeschreibung hinterlegt.' }}">Kanal {{ channel.gate_a }}–{{ channel.gate_b }}{% if channel.name %} · {{ channel.name }}{% endif %}</a>
-    ↔ <a href="/gates#gate-{{ partner }}" title="{{ gate_map[partner].description or 'Keine Torbeschreibung hinterlegt.' }}">Tor {{ partner }} · {{ gate_map[partner].name }}</a>{% if not loop.last %}<br>{% endif %}
+    <a href="{% if workspace %}{{ knowledge_url('channel', 'channel.' ~ channel.gate_a ~ '-' ~ channel.gate_b) }}{% else %}/channels#channel-{{ channel.gate_a }}-{{ channel.gate_b }}{% endif %}" title="{{ channel.description or 'Keine Kanalbeschreibung hinterlegt.' }}">Kanal {{ channel.gate_a }}–{{ channel.gate_b }}{% if channel.name %} · {{ channel.name }}{% endif %}</a>
+    ↔ <a href="{% if workspace %}{{ knowledge_url('gate', 'gate.' ~ partner) }}{% else %}/gates#gate-{{ partner }}{% endif %}" title="{{ gate_map[partner].description or 'Keine Torbeschreibung hinterlegt.' }}">Tor {{ partner }} · {{ gate_map[partner].name }}</a>{% if not loop.last %}<br>{% endif %}
   {% endfor %}
   </p>
 </article>
+{% endif %}
 {% endfor %}
 </section>
 <script src="/static/gate-catalog.js" defer></script>

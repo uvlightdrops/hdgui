@@ -30,7 +30,7 @@
         <dt>{{ property.label }}</dt>
         <dd>
           {% if property.entity %}
-          <a href="/knowledge/entities?category={{ property.entity.category }}#{{ property.entity.id }}">
+          <a href="{{ knowledge_url(property.entity.category, property.entity.id) }}">
             {{ property.value }}
           </a>
           {% else %}
@@ -49,7 +49,7 @@
         <dd>
           {{ variable.value.name }}
           {% if variable.direction %}
-          · <a href="/knowledge/entities?category=direction#{{ variable.direction.id }}">{{ variable.direction.name }}</a>
+          · <a href="{{ knowledge_url('direction', variable.direction.id) }}">{{ variable.direction.name }}</a>
           {% else %}
           · {{ variable.value.value }}
           {% endif %}

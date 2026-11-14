@@ -101,7 +101,7 @@ class CenterTimelineTests(unittest.TestCase):
         self.assertNotIn("Kanalhälften:", response.text)
         self.assertNotIn('id="center-table"', response.text)
         self.assertNotIn("Abtastpunkte als Tabelle", response.text)
-        self.assertIn('href="/knowledge#center-timeline"', response.text)
+        self.assertIn('href="/knowledge/help#center-timeline"', response.text)
         self.assertEqual(response.text.count('type="checkbox" data-center='), 9)
         with self.sessions.begin() as session:
             session.get(UiSettings, 1).active_profile_id = None
@@ -117,14 +117,14 @@ class CenterTimelineTests(unittest.TestCase):
         self.assertIn("2026-10-25", response.text)
         self.assertIn("keine exakten Wechselzeitpunkte", response.text)
         self.assertIn('id="center-timeline"', response.text)
-        self.assertIn('class="sidebar-group sidebar-knowledge" open', response.text)
+        self.assertIn('href="/knowledge" aria-current="page">Wissen', response.text)
         self.assertIn('href="/gates"', response.text)
         self.assertIn('href="/channels"', response.text)
         for path in ("/gates", "/channels"):
             page = self.web.get(path)
             self.assertEqual(page.status_code, 200)
-            self.assertIn('class="sidebar-group sidebar-knowledge" open', page.text)
-            self.assertIn(f'href="{path}" aria-current="page"', page.text)
+            self.assertIn('href="/knowledge" aria-current="page">Wissen', page.text)
+            self.assertIn('aria-label="Wissenskategorien"', page.text)
         self.client.natal.assert_not_called()
         self.client.transit.assert_not_called()
 
@@ -150,8 +150,8 @@ class CenterTimelineTests(unittest.TestCase):
         for symbol in ("☉", "⊕", "☽", "☿", "♀", "♂", "♃", "♄", "♅", "♆", "♇", "☊", "☋"):
             self.assertIn(symbol, response.text)
         self.assertIn("kein verbindliches Lebensziel", response.text)
-        self.assertIn('href="/knowledge/celestial-bodies" aria-current="page"', response.text)
-        self.assertIn('class="sidebar-group sidebar-knowledge" open', response.text)
+        self.assertIn('category=body" aria-current="page">Himmelskörper', response.text)
+        self.assertIn('href="/knowledge" aria-current="page">Wissen', response.text)
         self.client.natal.assert_not_called()
         self.client.transit.assert_not_called()
 

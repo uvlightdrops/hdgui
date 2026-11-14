@@ -273,7 +273,7 @@ class HdCatalogMigrationTests(unittest.TestCase):
                 self.assertIn("Innere Autorität", response.text)
                 self.assertIn("Profil 1/3", response.text)
                 self.assertIn("Rechtes Beispielkreuz", response.text)
-                self.assertIn('category=direction#direction.left', response.text)
+                self.assertIn('category=direction&amp;entity=direction.left', response.text)
             finally:
                 engine.dispose()
 

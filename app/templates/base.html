@@ -22,20 +22,13 @@
       <a href="/profiles" {% if request.url.path.startswith("/profiles") and request.url.path != "/profiles/new" %}aria-current="page"{% endif %}>Übersicht</a>
       <a href="/profiles/new" {% if request.url.path == "/profiles/new" %}aria-current="page"{% endif %}>Profil anlegen</a>
     </details>
-    <details class="sidebar-group sidebar-knowledge" {% if request.url.path.startswith("/knowledge") or request.url.path in ["/gates", "/channels"] %}open{% endif %}>
-      <summary>Wissen</summary>
-      <a href="/knowledge" {% if request.url.path == "/knowledge" %}aria-current="page"{% endif %}>Grundlagen</a>
-      <a href="/knowledge/celestial-bodies" {% if request.url.path == "/knowledge/celestial-bodies" %}aria-current="page"{% endif %}>Himmelskörper</a>
-      <a href="/knowledge/entities" {% if request.url.path == "/knowledge/entities" %}aria-current="page"{% endif %}>HD-Entitäten</a>
-      <a href="/gates" {% if request.url.path == "/gates" %}aria-current="page"{% endif %}>Tore</a>
-      <a href="/channels" {% if request.url.path == "/channels" %}aria-current="page"{% endif %}>Kanäle</a>
-    </details>
+    <a href="/knowledge" {% if request.url.path.startswith("/knowledge") or request.url.path in ["/gates", "/channels"] %}aria-current="page"{% endif %}>Wissen</a>
     <a href="/experiments/ephemeris" {% if request.url.path == "/experiments/ephemeris" %}aria-current="page"{% endif %}>Ephemeriden</a>
     <a href="/experiments/series" {% if request.url.path == "/experiments/series" %}aria-current="page"{% endif %}>Zeitreihe</a>
     <a href="/settings" {% if request.url.path == "/settings" %}aria-current="page"{% endif %}>Settings</a>
   </nav>
   <div class="page">
-  <main>{% block content %}{% endblock %}</main>
+  <main>{% if knowledge_navigation %}{% include "knowledge_navigation.html" %}{% endif %}{% block content %}{% endblock %}</main>
   {% block footer %}<footer>Lokale Einzelbenutzer-Anwendung · Aktuelle Transits und gespeicherte Geburtsprofile.</footer>{% endblock %}
   </div>
 </body>

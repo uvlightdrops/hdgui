@@ -1,0 +1,16 @@
+<header class="knowledge-navigation">
+  <h1>Wissen</h1>
+  <nav class="knowledge-topics" aria-label="Wissensbereiche">
+    {% for key, label, url in topic_links %}
+    <a href="{{ url }}" {% if key == knowledge_area %}aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <p>{{ knowledge_topic }} &gt; {{ categories[category] }}</p>
+  <nav class="knowledge-categories" aria-label="Wissenskategorien">
+    {% for key, label, url in category_links %}
+    <a href="{{ url }}" {% if key == category %}aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <p class="timeline-muted">Human Design ist ein interpretatives, wissenschaftlich nicht bestätigtes System.</p>
+  <p><a href="/knowledge/help#center-timeline">Hilfe zum Zentren-Verlauf</a></p>
+</header>

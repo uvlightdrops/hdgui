@@ -23,6 +23,7 @@ from app.experiments import SampleCache, experiment_router
 from app.center_timeline import center_timeline_router
 from app.gate_descriptions import CatalogMissing, gate_descriptions, gate_tooltip
 from app.hd_catalog import CATEGORY_LABELS
+from app.knowledge import entity_order, knowledge_url, navigation, validate_mapping
 from app.models import BirthProfile, Channel, Circuit, Gate, HdEntity, UiSettings
 from app.natal import (
     BODY_LABELS, CENTER_LABELS, SOURCE_LABELS, ChartUnavailable, NatalDataError, NatalService,
@@ -53,6 +54,8 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     settings = settings or Settings()
     engine, sessions = make_database(settings.database_url)
     templates = Jinja2Templates(directory=ROOT / "templates")
+    validate_mapping()
+    templates.env.globals["knowledge_url"] = knowledge_url
 
     def descriptions():
         with sessions() as session:
@@ -96,15 +99,71 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     ))
 
     @app.get("/knowledge")
-    def knowledge_page(request: Request):
+    def knowledge_page(
+        request: Request, area: str | None = None, category: str | None = None,
+        entity: str | None = None, gate: int | None = None,
+    ):
+        context = navigation(area, category)
+        category = context["category"]
+        if gate is not None and (category != "gate-line" or not 1 <= gate <= 64):
+            raise HTTPException(404, "Ungültige Tor-Auswahl.")
+        if entity is not None and request.query_params.get("category") is None:
+            raise HTTPException(404, "Eintrag benötigt eine Kategorie.")
+        context.update(workspace=True, selected_entity=entity, selected_gate=gate)
+        if category in ("gate", "channel", "circuit"):
+            context.update(catalog_context())
+            entries = {
+                "gate": [(f"gate.{g.number}", f"Tor {g.number} · {g.name}") for g in context["gates"]],
+                "channel": [(f"channel.{c.gate_a}-{c.gate_b}", f"Kanal {c.gate_a}–{c.gate_b}") for c in context["channels"]],
+                "circuit": [(f"circuit.{c.id}", c.name) for c in context["circuits"]],
+            }[category]
+            if entity is not None and entity not in dict(entries):
+                raise HTTPException(404, "Eintrag gehört nicht zu dieser Kategorie.")
+            context["entry_links"] = entries
+            context["current_profile"] = current_profile() if category == "gate" else None
+            template = "gates.html" if category == "gate" else "channels.html"
+        else:
+            try:
+                with sessions() as session:
+                    entities = sorted(session.scalars(
+                        select(HdEntity).where(HdEntity.category == category),
+                    ).all(), key=entity_order)
+            except SQLAlchemyError as exc:
+                raise HTTPException(500, "Entitätenkatalog nicht verfügbar. Bitte Alembic-Migrationen ausführen.") from exc
+            selected = next((row for row in entities if row.id == entity), None)
+            if entity is not None and selected is None:
+                raise HTTPException(404, "Eintrag gehört nicht zu dieser Kategorie.")
+            if category == "gate-line":
+                if selected is not None:
+                    entity_gate = selected.structure["gate"]
+                    if gate is not None and gate != entity_gate:
+                        raise HTTPException(404, "Tor und Torlinie widersprechen sich.")
+                    gate = entity_gate
+                context["selected_gate"] = gate
+                entities = [row for row in entities if row.structure["gate"] == gate]
+            context.update(
+                entities=[selected] if selected else [],
+                entry_links=[(row.id, row.name) for row in entities],
+                empty_category=not entities and category != "gate-line",
+            )
+            if category == "center" and selected is not None:
+                context["center_gates"] = [
+                    row for row in catalog_context()["gates"] if row.center == selected.id.split(".", 1)[1]
+                ]
+            template = "hd_entities.html"
         return templates.TemplateResponse(
-            request=request, name="knowledge.html", context={},
+            request=request, name=template, context=context,
+            headers={"Cache-Control": "no-store"},
         )
+
+    @app.get("/knowledge/help")
+    def knowledge_help(request: Request):
+        return templates.TemplateResponse(request=request, name="knowledge.html", context={})
 
     @app.get("/knowledge/celestial-bodies")
     def celestial_bodies_page(request: Request):
         return templates.TemplateResponse(
-            request=request, name="celestial_bodies.html", context={},
+            request=request, name="celestial_bodies.html", context=navigation(category="body"),
         )
 
     @app.get("/knowledge/entities")
@@ -114,13 +173,13 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         try:
             with sessions() as session:
                 entities = session.scalars(
-                    select(HdEntity).where(HdEntity.category == category).order_by(HdEntity.id),
+                    select(HdEntity).where(HdEntity.category == category),
                 ).all()
         except SQLAlchemyError as exc:
             raise HTTPException(500, "Entitätenkatalog nicht verfügbar. Bitte Alembic-Migrationen ausführen.") from exc
         return templates.TemplateResponse(
             request=request, name="hd_entities.html",
-            context={"entities": entities, "categories": CATEGORY_LABELS, "category": category},
+            context={"entities": sorted(entities, key=entity_order), **navigation(category=category)},
             headers={"Cache-Control": "no-store"},
         )
 
@@ -157,14 +216,14 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     def gates_page(request: Request):
         return templates.TemplateResponse(
             request=request, name="gates.html",
-            context={**catalog_context(), "current_profile": current_profile()},
+            context={**catalog_context(), "current_profile": current_profile(), **navigation(category="gate")},
             headers={"Cache-Control": "no-store"},
         )
 
     @app.get("/channels")
     def channels_page(request: Request):
         return templates.TemplateResponse(
-            request=request, name="channels.html", context=catalog_context(),
+            request=request, name="channels.html", context={**catalog_context(), **navigation(category="channel")},
         )
 
     def token(request):
