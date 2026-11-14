@@ -5,7 +5,8 @@ main { container-type: inline-size; }
 .page { margin-left: 170px; min-width: 0; }
 .sidebar { position: fixed; inset: 0 auto 0 0; width: 170px; box-sizing: border-box; padding: 1.5rem .75rem; display: flex; flex-direction: column; gap: .25rem; border-right: 1px solid #344356; background: #1a2635; overflow-y: auto; }
 .sidebar a { padding: .5rem .75rem; border-radius: .4rem; text-decoration: none; }
-.sidebar .brand { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
+.sidebar .brand { display: flex; align-items: center; gap: .4rem; font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; }
+.sidebar .brand img { width: 2rem; height: 2rem; flex-shrink: 0; }
 .sidebar a[aria-current="page"] { background: #344356; color: #fff; }
 .sidebar-group summary { padding: .5rem .75rem; cursor: pointer; border-radius: .4rem; }
 .sidebar-group[open] summary { color: #85dacc; }
@@ -198,6 +199,7 @@ button:disabled { opacity: .6; cursor: wait; }
   .profile-card .chart { width: 100%; max-width: 250px; align-self: center; }
   .sidebar { width: 110px; padding: 1rem .25rem; font-size: .85rem; }
   .sidebar .brand { font-size: 1.1rem; }
+  .sidebar .brand img { width: 1.5rem; height: 1.5rem; }
   .sidebar a { padding: .65rem .4rem; }
   .page { margin-left: 110px; }
   main, footer { padding: .75rem; }

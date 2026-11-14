@@ -4,32 +4,35 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HDGUI · Human Design</title>
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <nav class="sidebar" aria-label="Hauptnavigation">
-    <a class="brand" href="/">HDGUI</a>
-    <a href="/" {% if request.url.path == "/" %}aria-current="page"{% endif %}>Home</a>
+    <a class="brand" title="Zur aktuellen Transit-Übersicht" href="/" {% if request.url.path == "/" %}aria-current="page"{% endif %}>
+      <img src="/static/logo.svg" alt="" width="36" height="36">
+      <span>HDGUI</span>
+    </a>
     <details class="sidebar-group" {% if request.url.path.startswith("/transit") %}open{% endif %}>
-      <summary>Transit</summary>
-      <a href="/transit" {% if request.url.path.startswith("/transit") %}aria-current="page"{% endif %}>Zodiac-Ansicht</a>
+      <summary title="Ansichten der aktuellen Himmelskörperpositionen">Transit</summary>
+      <a title="Aktuelle Positionen im Tierkreis und mögliche Gate-Wechsel ansehen" href="/transit" {% if request.url.path.startswith("/transit") %}aria-current="page"{% endif %}>Zodiac-Ansicht</a>
     </details>
-    <a href="/experiments/gate-plot" {% if request.url.path == "/experiments/gate-plot" %}aria-current="page"{% endif %}>Gate-Verlauf</a>
-    <a href="/centers" {% if request.url.path == "/centers" %}aria-current="page"{% endif %}>Zentren-Verlauf</a>
-    <a href="/experiments/gate-walk" {% if request.url.path == "/experiments/gate-walk" %}aria-current="page"{% endif %}>Gate-Wanderung</a>
+    <a title="Transitpositionen und Gates über die Zeit als Grafik oder Tabelle betrachten" href="/experiments/gate-plot" {% if request.url.path == "/experiments/gate-plot" %}aria-current="page"{% endif %}>Gate-Verlauf</a>
+    <a title="Zentren-Definitionen aus Geburtsprofil und Transit im Zeitverlauf vergleichen" href="/centers" {% if request.url.path == "/centers" %}aria-current="page"{% endif %}>Zentren-Verlauf</a>
+    <a title="Gate-Reihenfolge im Tierkreis und BodyGraph als geometrische Animation erkunden" href="/experiments/gate-walk" {% if request.url.path == "/experiments/gate-walk" %}aria-current="page"{% endif %}>Gate-Wanderung</a>
     <details class="sidebar-group" {% if request.url.path.startswith("/profiles") %}open{% endif %}>
-      <summary>Geburtsprofile</summary>
-      <a href="/profiles" {% if request.url.path.startswith("/profiles") and request.url.path != "/profiles/new" %}aria-current="page"{% endif %}>Übersicht</a>
-      <a href="/profiles/new" {% if request.url.path == "/profiles/new" %}aria-current="page"{% endif %}>Profil anlegen</a>
+      <summary title="Geburtsprofile verwalten und ein aktuelles Profil auswählen" aria-label="Geburtsprofile">Geburts-<br>profile</summary>
+      <a title="Gespeicherte Geburtsprofile ansehen und aktuelles Profil auswählen" href="/profiles" {% if request.url.path.startswith("/profiles") and request.url.path != "/profiles/new" %}aria-current="page"{% endif %}>Übersicht</a>
+      <a title="Ein neues Geburtsprofil mit Geburtszeit und Geburtsort anlegen" href="/profiles/new" {% if request.url.path == "/profiles/new" %}aria-current="page"{% endif %}>Profil anlegen</a>
     </details>
-    <a href="/knowledge" {% if request.url.path.startswith("/knowledge") or request.url.path in ["/gates", "/channels"] %}aria-current="page"{% endif %}>Wissen</a>
-    <a href="/settings" {% if request.url.path == "/settings" %}aria-current="page"{% endif %}>Settings</a>
+    <a title="Grundlagen, Tore, Kanäle und weitere Human-Design-Begriffe nachschlagen" href="/knowledge" {% if request.url.path.startswith("/knowledge") or request.url.path in ["/gates", "/channels"] %}aria-current="page"{% endif %}>Wissen</a>
+    <a title="Aktualisierung und Anzeige des aktuellen Transits einstellen" href="/settings" {% if request.url.path == "/settings" %}aria-current="page"{% endif %}>Settings</a>
     {% if request.app.state.account_service %}
-    <a href="/contacts" {% if request.url.path.startswith("/contacts") %}aria-current="page"{% endif %}>Kontakte</a>
-    <a href="/account">Mein Konto</a>
+    <a title="Kontaktanfragen und bestätigte Kontakte verwalten" href="/contacts" {% if request.url.path.startswith("/contacts") %}aria-current="page"{% endif %}>Kontakte</a>
+    <a title="Kontodaten und Kontoeinstellungen verwalten" href="/account">Mein Konto</a>
     <form method="post" action="/auth/logout">
       <input type="hidden" name="csrf" value="{{ request.state.csrf }}">
-      <button type="submit">Abmelden</button>
+      <button type="submit" title="Aktuelle Sitzung beenden">Abmelden</button>
     </form>
     {% endif %}
   </nav>

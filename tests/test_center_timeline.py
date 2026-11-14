@@ -136,8 +136,39 @@ class CenterTimelineTests(unittest.TestCase):
             sidebar = response.text.split('<nav class="sidebar"', 1)[1].split("</nav>", 1)[0]
             self.assertIn(f'href="{path}" aria-current="page"', sidebar)
             self.assertEqual(sidebar.count('aria-current="page"'), 1)
-            self.assertLess(sidebar.index("<summary>Geburtsprofile</summary>"),
+            self.assertLess(sidebar.index('aria-label="Geburtsprofile">Geburts-<br>profile</summary>'),
                             sidebar.index('href="/profiles/new"'))
+
+    def test_sidebar_items_have_descriptive_tooltips(self):
+        from html.parser import HTMLParser
+
+        class SidebarParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.items = []
+
+            def handle_starttag(self, tag, attrs):
+                if tag in ("a", "summary", "button"):
+                    self.items.append((tag, dict(attrs)))
+
+        sidebar = self.web.get("/profiles").text.split('<nav class="sidebar"', 1)[1].split("</nav>", 1)[0]
+        parser = SidebarParser()
+        parser.feed(sidebar)
+        self.assertEqual(len(parser.items), 11)
+        for tag, attrs in parser.items:
+            with self.subTest(tag=tag, target=attrs.get("href")):
+                self.assertGreater(len(attrs.get("title", "")), 20)
+
+    def test_sidebar_logo_replaces_home_and_is_served_as_favicon(self):
+        response = self.web.get("/profiles")
+        sidebar = response.text.split('<nav class="sidebar"', 1)[1].split("</nav>", 1)[0]
+        self.assertIn('src="/static/logo.svg"', sidebar)
+        self.assertEqual(sidebar.count('href="/"'), 1)
+        self.assertNotIn(">Home</a>", sidebar)
+        self.assertIn('rel="icon" type="image/svg+xml" href="/static/logo.svg"', response.text)
+        icon = self.web.get("/static/logo.svg")
+        self.assertEqual(icon.status_code, 200)
+        self.assertIn("image/svg+xml", icon.headers["content-type"])
 
     def test_celestial_knowledge_table_is_accessible_and_needs_no_api(self):
         response = self.web.get("/knowledge/celestial-bodies")

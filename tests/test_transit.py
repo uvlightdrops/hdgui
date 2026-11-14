@@ -87,7 +87,7 @@ class TransitTests(unittest.TestCase):
         self.assertIn('class="sidebar"', response.text)
         self.assertIn('href="/transit" aria-current="page"', response.text)
         self.assertIn('class="sidebar-group" open', response.text)
-        self.assertIn('<summary>Transit</summary>', response.text)
+        self.assertIn('<summary title="Ansichten der aktuellen Himmelskörperpositionen">Transit</summary>', response.text)
         self.assertIn('aria-current="page">Zodiac-Ansicht</a>', response.text)
         self.assertNotIn("<footer>", response.text)
         self.assertNotIn("Momentaufnahme", response.text)

@@ -24,4 +24,4 @@ dependencies = [
 include = ["app*"]
 
 [tool.setuptools.package-data]
-app = ["templates/*.html", "static/*.css", "static/*.js", "data/*.json", "data/*.yaml", "data/NOTICE", "data/LICENSE-AGPL"]
+app = ["templates/*.html", "static/*.css", "static/*.js", "static/*.svg", "data/*.json", "data/*.yaml", "data/NOTICE", "data/LICENSE-AGPL"]
