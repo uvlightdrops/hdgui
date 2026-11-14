@@ -11,6 +11,7 @@ __pycache__/
 /.hdgui-api-token
 .github/skills
 .pytest_cache/
+/log/
 *.egg-info/
 .idea/
 test_*
