@@ -114,22 +114,30 @@ caption { text-align: left; margin: 1rem 0; }
 .transit-table .table-sort:hover { color: #85dacc; }
 .transit-details { justify-self: center; max-width: 100%; min-width: 0; overflow-x: auto; }
 .transit-bodygraph { max-width: 600px; margin: auto; }
-.gate-walk-graph { max-width: 600px; margin: 1rem auto; overflow: hidden; touch-action: none; cursor: grab; user-select: none; }
+.gate-walk-graph { max-width: 600px; margin: 0 auto; overflow: hidden; touch-action: none; cursor: grab; user-select: none; }
 .gate-walk-graph:active { cursor: grabbing; }
-.gate-walk-layout { display: grid; grid-template-columns: 180px minmax(0, 600px) minmax(0, 420px); justify-content: center; align-items: center; gap: 1.5rem; }
-.gate-walk-controls { display: flex; flex-direction: column; gap: .85rem; align-self: start; }
+.gate-walk-graph [data-walk-gate][data-visited="true"] circle { fill: #85dacc; stroke: #e3eaf3; stroke-width: .5; }
+.gate-walk-graph [data-walk-gate][data-visited="true"] text { fill: #101722; font-weight: 700; }
+.gate-walk-layout { display: grid; grid-template-columns: 180px minmax(0, 600px) minmax(0, 420px); justify-content: center; align-items: start; gap: 1.5rem; }
+.gate-walk-controls { display: flex; flex-direction: column; gap: .65rem; align-self: start; }
 .gate-walk-controls label { margin: 0; }
-.gate-walk-controls button { width: 100%; }
+.gate-walk-controls button { align-self: start; padding: .4rem .7rem; font-size: .9rem; }
 .gate-walk-controls output { font-variant-numeric: tabular-nums; }
 .gate-walk-controls p { margin: 0; font-size: .8rem; color: #bac8da; line-height: 1.5; }
+.walk-hexagram { margin-top: .5rem; }
+.walk-hexagram small { display: block; color: #bac8da; margin-top: .5rem; }
+.walk-hexagram-lines { display: flex; flex-direction: column; gap: .4rem; width: 100px; margin-top: .6rem; }
+.walk-hex-line { height: 7px; background: #e3eaf3; }
+.walk-hex-line[data-solid="false"] { background: linear-gradient(to right, #e3eaf3 0 42%, transparent 42% 58%, #e3eaf3 58% 100%); }
 .gate-walk-layout .gate-walk-graph { width: 100%; }
+.gate-walk-side { width: 100%; max-width: 420px; min-width: 0; justify-self: center; }
 .gate-walk-zodiac { width: 100%; max-width: 420px; overflow: hidden; touch-action: none; cursor: grab; user-select: none; }
 .gate-walk-zodiac:active { cursor: grabbing; }
 .gate-walk-zodiac svg { display: block; width: 100%; height: auto; max-height: 54.6vh; }
 @media (max-width: 800px) {
   .gate-walk-layout { grid-template-columns: 140px minmax(0, 1fr); gap: .75rem; }
   .gate-walk-controls { grid-row: span 2; }
-  .gate-walk-zodiac { grid-column: 2; justify-self: center; }
+  .gate-walk-side { grid-column: 2; }
 }
 .gate-walk-graph svg { display: block; width: 100%; height: auto; max-height: 78vh; }
 .transit-bodygraph svg { display: block; width: 100%; height: auto; max-height: 85vh; background: white; border-radius: .5rem; }

@@ -18,6 +18,8 @@ class BodyGraphTests(unittest.TestCase):
         self.assertFalse(any("data-channel" in item.attrib for item in root.iter()))
         ids = {item.get("id") for item in root.iter()}
         self.assertTrue({"gate-walk-dot", "gate-walk-trail"} <= ids)
+        trail = next(item for item in root.iter() if item.get("id") == "gate-walk-trail")
+        self.assertEqual(trail.get("stroke-dasharray"), "2 1.5")
         markers = [item for item in root.iter() if "data-center-marker" in item.attrib]
         self.assertEqual(len(markers), 9)
         self.assertEqual(len({item.get("fill") for item in markers}), 9)

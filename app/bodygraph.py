@@ -88,6 +88,7 @@ def render_gate_walk(descriptions=None) -> str:
     SubElement(root, "polyline", {
         "id": "gate-walk-trail", "fill": "none", "stroke": "#85dacc",
         "stroke-opacity": ".65", "stroke-width": ".8", "stroke-linejoin": "round",
+        "stroke-dasharray": "2 1.5",
     })
     first = layout["gates_coords"][str(GATES[0])]
     SubElement(root, "circle", {

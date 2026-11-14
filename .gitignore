@@ -17,6 +17,7 @@ __pycache__/
 test_*
 !/tests/test_center_timeline.py
 !/tests/test_center_timeline.js
+!/tests/test_gate_walk.js
 !/tests/test_hd_catalog.py
 !/tests/test_knowledge.py
 !/tests/test_multi_user.py

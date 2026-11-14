@@ -141,6 +141,8 @@ class ExperimentTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('id="gate-walk-trail"', response.text)
         self.assertIn("/static/gate-walk.js", response.text)
+        self.assertNotIn('id="walk-status"', response.text)
+        self.assertIn('id="walk-gate-name" aria-live="polite"', response.text)
         self.client.transit.assert_not_called()
 
     def setUp(self):

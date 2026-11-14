@@ -3,8 +3,22 @@
     const root = document.getElementById("gate-walk");
     const order = JSON.parse(root.dataset.order);
     const descriptions = JSON.parse(document.getElementById("walk-descriptions").textContent);
-    const positions = order.map(gate => {
-        const circle = root.querySelector(`[data-walk-gate="${gate}"] circle`);
+    // King Wen numbering, bottom to top: https://yiatlas.com/en/hexagrams
+    const hexagrams = [
+        "111111", "000000", "100010", "010001", "111010", "010111", "010000", "000010",
+        "111011", "110111", "111000", "000111", "101111", "111101", "001000", "000100",
+        "100110", "011001", "110000", "000011", "100101", "101001", "000001", "100000",
+        "100111", "111001", "100001", "011110", "010010", "101101", "001110", "011100",
+        "001111", "111100", "000101", "101000", "101011", "110101", "001010", "010100",
+        "110001", "100011", "111110", "011111", "000110", "011000", "010110", "011010",
+        "101110", "011101", "100100", "001001", "001011", "110100", "101100", "001101",
+        "011011", "110110", "010011", "110010", "110011", "001100", "101010", "010101"
+    ];
+    const hexagram = document.getElementById("walk-hexagram");
+    const hexagramLines = Array.from({length: 6}, (_, i) => document.getElementById(`walk-hex-line-${i + 1}`));
+    const gateMarkers = order.map(gate => root.querySelector(`[data-walk-gate="${gate}"]`));
+    const positions = gateMarkers.map(marker => {
+        const circle = marker.querySelector("circle");
         return [Number(circle.getAttribute("cx")), Number(circle.getAttribute("cy"))];
     });
     const dot = document.getElementById("gate-walk-dot");
@@ -20,7 +34,6 @@
     }
     const play = document.getElementById("walk-play");
     const speed = document.getElementById("walk-speed");
-    const status = document.getElementById("walk-status");
     const svg = document.getElementById("gate-walk-svg");
     const viewport = root.querySelector(".gate-walk-graph");
     const zodiacSvg = document.getElementById("walk-zodiac-svg");
@@ -128,6 +141,10 @@
         const gate = progress >= order.length ? order[0] : order[index];
         if (gate !== lastGate || progress >= order.length) {
             const description = descriptions[gate];
+            const pattern = hexagrams[gate - 1];
+            hexagramLines.forEach((line, i) => line.setAttribute("data-solid", String(pattern[i] === "1")));
+            hexagram.setAttribute("aria-label", `I-Ging-Hexagramm ${gate}, Linien von unten nach oben: ` +
+                [...pattern].map(line => line === "1" ? "durchgezogen" : "geteilt").join(", "));
             document.getElementById("walk-gate-name").textContent = `Gate ${gate} · ${description.name}`;
             document.getElementById("walk-gate-description").textContent = description.description;
             const locale = description.text_locale || "unbekannt";
@@ -138,9 +155,9 @@
             zodiacSectors.forEach((sector, step) => {
                 sector.setAttribute("fill-opacity", rounds > 0 || step <= Math.floor(progress) ? ".65" : "0");
             });
-            status.textContent = progress >= order.length
-                ? "Runde vollständig · Gate 41"
-                : `Gate ${gate} · ${index + 1}/64 · Runde ${rounds + 1}`;
+            gateMarkers.forEach((marker, step) => {
+                marker.setAttribute("data-visited", String(rounds > 0 || step <= index));
+            });
             lastGate = gate;
         }
     }
