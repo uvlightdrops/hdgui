@@ -6,7 +6,7 @@ scope: architecture
 purpose: Describes the delivered runtime, domain boundaries, persistence, API flows, caches and limitations of HDGUI.
 created: 2026-10-09
 updated: 2026-11-14
-update_reason: Document revision 0008 and the shared localized knowledge catalog.
+update_reason: Describe opt-in account boundaries and external multi-user calculation hosting.
 status: active
 semantic_blocks:
   - id: runtime-boundaries
@@ -58,11 +58,22 @@ FastAPI renders pages and handles forms/JSON endpoints. Jinja2 provides server-r
 
 The WebUI does not implement a second astronomical ephemeris or the engine's design-time calculation. `ChartClient` owns upstream transport/error handling and response mapping. Normalized Pydantic `TransitFrame`, `TransitPosition` and `NatalActivations` models validate calculation data before domain use. The client requests UTC at a zero-offset reference location; see [time handling](../guides/operations.md#storage-time-settings).
 
+Local single-user behavior remains the default. With `HDGUI_MULTI_USER=1`,
+authentication middleware requires a live server-side session, account-aware
+profile queries enforce ownership or read grants, and preferences are per user.
+Natal persistence rechecks access after remote computation; recipients can only
+read fresh stored natal results. Enabled mode requires HTTPS SMTP/public URL
+configuration and an external HTTPS calculation API, skips Docker startup and
+disables application access logs to protect sign-in tokens. See
+[Multi-user](multi-user.md) and [Uberspace](../guides/uberspace.md).
+
 ## Modules and responsibilities [module-responsibilities]
 
 | Area | Current responsibility |
 |---|---|
 | `main.py` | App factory, profile/settings/catalog routes, CSRF forms, service wiring |
+| `accounts.py`, `sharing.py` | Verified-email accounts, revocable sessions, per-user authorization, contacts and read-only grants |
+| `http_limits.py` | Bounded request bodies before form parsing in multi-user mode |
 | `config.py`, `backend.py`, `__main__.py` | Environment settings and opt-out local Docker startup |
 | `api_client.py` | `/calculate` and `/bodygraph` transport, parsing and error translation |
 | `profiles.py`, `models.py`, `database.py` | Birth validation, cache keys, ORM models and session factory |

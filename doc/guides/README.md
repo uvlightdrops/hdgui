@@ -6,7 +6,7 @@ scope: guides
 purpose: Indexes operational instructions and bilingual reflective-practice guides.
 created: 2026-11-14
 updated: 2026-11-14 19
-update_reason: Mark the German knowledge navigation guide as current.
+update_reason: Link Uberspace setup for the private multi-user application.
 status: active
 semantic_blocks:
   - id: guide-documents
@@ -35,6 +35,7 @@ This folder contains practical operations instructions and bilingual guides for 
 | [Practice — English](practice.en.md) | active | Reflective workflows, uncertainty, consent and future possibilities | purpose-boundaries, current-application, reflective-workflows, time-uncertainty, consent-privacy, future-possibilities |
 | [Praxis — Deutsch](practice.de.md) | active | Deutsche Fassung des Leitfadens zu Reflexion, Unsicherheit und verantwortungsvoller Nutzung | zweck-grenzen, anwendung-heute, arbeitsweisen, zeit-unsicherheit, einwilligung-privatsphaere, weiterentwicklungen |
 | [Wissen erkunden](knowledge-ui.de.md) | active | Themen-Tabs, Kategorien und Einträge aus Anwendersicht | Themenwahl, Navigation, Textkennzeichnung und Grenzen |
+| [Uberspace](uberspace.md) | draft | Native U7/U8 setup, private configuration and external calculation API | Installation, ownership migration and operation |
 
 ## Navigation [navigation]
 

@@ -8,7 +8,7 @@ scope: features
 purpose: This page inventories the user-facing features currently delivered by HDGUI and distinguishes them from proposed or unavailable behavior.
 created: 2026-11-11
 updated: 2026-11-14
-update_reason: Document topic-based knowledge navigation alongside the entity catalog.
+update_reason: Document opt-in accounts, contact requests and read-only profile sharing.
 status: active
 semantic_blocks:
   - id: transit-exploration
@@ -34,7 +34,10 @@ relations:
 
 [Documentation index](../README.md#documentation) · [Feature index](README.md) · [Architecture](../architecture/system-overview.md) · [Operations](../guides/operations.md)
 
-HDGUI is a local, single-user web interface for exploring geocentric planetary positions alongside the Human Design gate system. A separate `humandesign_api` service supplies calculations; HDGUI presents results and manages local profiles, settings and cached data.
+HDGUI explores geocentric planetary positions alongside the Human Design gate
+system. Local single-user mode is the default; optional private multi-user mode
+requires explicit configuration. A separate `humandesign_api` service supplies
+calculations; HDGUI presents results and manages profiles, settings and cached data.
 
 ## Transit exploration [transit-exploration]
 
@@ -74,10 +77,29 @@ The tracks reuse bounded samples. Unloaded gaps remain visible, short transition
 
 ## Settings and local data [settings-data]
 
-HDGUI keeps profiles, saved charts, settings and persistent calculation samples in its local database. In-memory caches are process-local. There are no accounts or profile ownership controls, so the application is intended to remain on localhost. See [Operations](../guides/operations.md) for configuration, migrations, backup and data-handling details.
+HDGUI keeps profiles, saved charts, settings and persistent calculation samples
+in its database. In-memory caches are process-local. Without opt-in multi-user
+mode, the application has no access controls and must stay on localhost.
+
+## Private accounts and sharing
+
+With `HDGUI_MULTI_USER=1`, email links establish verified accounts and opaque
+server-side sessions. Users have their own current-profile and display settings,
+can create any number of profiles, and add contacts by email request/acceptance.
+Owners explicitly grant read-only profile access and can revoke it. Recipients
+may select shared profiles and read stored results, but cannot trigger missing
+natal calculations. Removing a contact revokes mutual grants. Profile requests
+are authorized across HTML, SVG, JSON, overlays and timelines; calculation and
+email request budgets are bounded.
+
+See [Multi-user](../architecture/multi-user.md) for isolation and migration,
+and [Uberspace](../guides/uberspace.md) for required deployment configuration.
 
 ## Not delivered [not-delivered]
 
-The application does not provide continuous real-time or accelerated planetary playback, automatic natal–transit synthesis in the home chart, simultaneous multi-profile comparison, public multi-user access, or a validated public-hosting security boundary. These should not be inferred from the gate-walk animation, profile overlays or center timeline.
+The application does not provide continuous real-time or accelerated planetary
+playback, automatic natal–transit synthesis in the home chart or simultaneous
+multi-profile comparison. Provider-specific public hosting is not validated by
+the local integration tests or setup script.
 
 Astrology and Human Design are interpretive frameworks, not scientifically established explanations of personality or life events. Computed positions do not validate personal predictions, and the application is not a diagnostic or treatment tool.

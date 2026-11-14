@@ -6,7 +6,7 @@ scope: guides
 purpose: Documents installation, configuration, migration, catalog import, backup, security and troubleshooting procedures.
 created: 2026-10-09
 updated: 2026-11-14
-update_reason: Document revision 0008 and multilingual catalog operations.
+update_reason: Distinguish local startup from opt-in multi-user Uberspace deployment.
 status: active
 semantic_blocks:
   - id: api-key-setup
@@ -37,7 +37,11 @@ relations:
 
 [Documentation index](../README.md#documentation) · [Guides index](README.md) · [Architecture](../architecture/system-overview.md) · [Practice](practice.en.md)
 
-This is the operational reference for the current **local, single-user** implementation. There is no login, profile ownership or server-side per-user isolation. Do not expose it publicly or to an untrusted shared network.
+This reference covers **local single-user mode**, which remains the default
+and has no access control. Do not expose that mode publicly or to an untrusted
+network. For opt-in email authentication, contacts and profile sharing with
+an external calculation API, follow [Uberspace setup](uberspace.md) and the
+[Multi-user implementation](../architecture/multi-user.md).
 
 <a id="api-key-setup"></a>
 ## API key: where it comes from (required before first start) [api-key-setup]

@@ -3,8 +3,8 @@ project: hdgui
 scope: architecture
 created: 2026-11-14 20
 updated: 2026-11-14 20
-update_reason: Define email-link accounts, contacts, read-only profile sharing and external calculation hosting.
-status: draft
+update_reason: Document opt-in multi-user implementation and remaining target-host validation.
+status: active
 agent_project: hdgui
 ---
 
@@ -14,9 +14,17 @@ agent_project: hdgui
 
 ## Goal and agreed decisions
 
-**Concept only; not implemented and not approval for public deployment.**
-HDGUI becomes a private, authenticated application with multiple independent
-accounts. The calculation service runs on a separately operated server.
+**Implemented behind `HDGUI_MULTI_USER=1`; hosted rollout still requires staging
+validation.** Local single-user mode remains the default. Enabled mode makes
+HDGUI a private application with independent accounts and requires a separately
+configured HTTPS calculation server. See [Uberspace setup](../guides/uberspace.md).
+
+`app/accounts.py` implements account and session lifecycle;
+`app/sharing.py` manages contacts and read grants. Revision `0009` adds the
+account schema without reassigning any existing profile. Authentication middleware
+protects all routes except sign-in/confirmation and static assets. Until unowned
+legacy profiles are assigned, authenticated ordinary pages return an explicit
+setup error; the authentication routes remain available to verify the first owner.
 
 | Concern | Decision |
 |---|---|
@@ -88,7 +96,7 @@ only in sessions or templates.
 | `contact_requests` | Requester FK, target email key, pending/accepted/declined/cancelled state, expiry; at most one active request for an unordered pair |
 | `contacts` | Canonically ordered pair of user FKs, unique pair constraint, acceptance timestamp; no self-contact |
 | `profile_shares` | Profile FK, recipient FK, granting owner FK, creation timestamp; unique `(profile_id, recipient_id)`; no owner-as-recipient |
-| `birth_profiles.owner_user_id` | Indexed, non-null user FK after migration; profile IDs remain unchanged |
+| `birth_profiles.owner_user_id` | Indexed user FK; nullable only for preserved local-mode/legacy records. Enabled mode blocks ordinary access until every record has an owner, and always assigns the actor on creation |
 | `user_preferences` | One row per user; current profile, locale, autoreload, display cache preference and timeline detail |
 | `security_events` | Actor, action, opaque target IDs, timestamp and outcome; no tokens, birth fields or message bodies |
 
@@ -114,8 +122,10 @@ clients set `owner_user_id` or `granting_owner_id`.
 Use cryptographically random email tokens with at least 256 bits of entropy,
 single-use consumption and a short expiry, initially 15 minutes. Store their
 digests, rate-limit issuing and consuming them, and expire outstanding tokens
-after account disablement. Queue email reliably; failed delivery must be visible
-to operators without revealing account existence to an unauthenticated caller.
+after account disablement. The implementation sends email synchronously over TLS, records failed login
+deliveries, and invalidates failed-delivery tokens. Operators see explicit errors
+without revealing account existence to an unauthenticated caller. A durable
+background mail queue is not included; operators must monitor delivery failures.
 
 Email scanners must not consume a link or create an authenticated session by
 following GET alone. The landing page provides an explicit confirmation POST
@@ -222,8 +232,9 @@ explicitly; never delete existing profiles silently.
    select one verified initial owner for existing profiles and migrate the
    singleton preferences to that account. Do not assign records to the first
    public signup or infer ownership from a profile name.
-3. **Enforce isolation:** verify every existing profile has an owner, then
-   enforce non-null ownership. Replace global selection and unrestricted
+3. **Enforce isolation:** verify every existing profile has an owner before
+   ordinary multi-user access is permitted. Nullable ownership remains solely
+   for the explicit legacy/local mode. Replace global selection and unrestricted
    service reads. Never expose a mixed mode where some routes skip authentication.
 4. **Contacts and sharing:** implement request acceptance, owner-issued read
    grants, recipient views and transactional revocation/deletion.
@@ -256,3 +267,21 @@ requests, not only visible controls. Prove:
   recipient reads never trigger natal calculations.
 * Migration preserves existing records with the explicitly selected owner,
   and a tested backup/restore works before the application is exposed.
+
+## Operation boundaries
+
+The first hosted release uses one worker and SQLite; independent processes need
+shared database-backed budgets, and PostgreSQL deployment needs its own load
+validation. The WebUI limits calculation routes to 300 budget units per account
+per hour and 3000 globally; multi-sample requests consume multiple units.
+Contact notifications are limited to 10 per account per day and 100 globally.
+Authentication email requests have an additional global limit of 100 per hour,
+alongside per-address and per-IP budgets.
+POST bodies are bounded to 64 KiB. These are resource policies, not profile-count
+limits. The calculation client permits at most four concurrent outbound requests.
+
+The Uberspace script installs dependencies, migrates, checks configuration and
+generates a user-service definition. It does not provision the external API,
+SMTP, domain/certificates or backups, and has not been executed on a target host.
+Do not expose local single-user mode publicly or infer a completed production
+security assessment from this implementation.

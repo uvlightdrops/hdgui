@@ -2,7 +2,12 @@
 
 HDGUI is a local Python WebUI for exploring geocentric planetary positions alongside the Human Design gate system. It displays current transits, sampled gate timelines, persistent birth profiles and saved BodyGraph charts. Calculations come from a separate `humandesign_api` service; the WebUI manages presentation, local storage and caching.
 
-**Status:** working local, single-user application, without login or profile ownership controls. Keep it on localhost. The interface currently includes German labels; maintained technical documentation is in English.
+**Status:** local single-user mode remains the default and must stay on localhost.
+An opt-in private multi-user mode adds email-link sign-in, profile ownership,
+accepted contacts and read-only sharing. Public deployment requires explicit
+HTTPS/SMTP configuration, an external calculation API and ownership assignment
+for existing data; see [Uberspace setup](doc/guides/uberspace.md). The interface
+uses German labels; maintained technical documentation is in English.
 
 ## Documentation
 
@@ -13,6 +18,8 @@ HDGUI is a local Python WebUI for exploring geocentric planetary positions along
 | [Operations](doc/guides/operations.md) | Installation, configuration, Docker lifecycle, migrations, catalog imports, backup and troubleshooting |
 | [Architecture](doc/architecture/system-overview.md) | Actual implementation, domain boundaries, API integration, caches and limitations |
 | [Knowledge Catalog Migration](doc/architecture/knowledge-catalog-migration.md) | Proposed unified multilingual knowledge model and migration approach |
+| [Multi-user](doc/architecture/multi-user.md) | Account isolation, email sign-in, contacts, sharing and ownership migration |
+| [Uberspace](doc/guides/uberspace.md) | U7/U8 user-service setup without local Docker |
 | [Practice — English](doc/guides/practice.en.md) | Value, reflective workflows and possible future developments for astrology and Human Design practice |
 | [Practice — German](doc/guides/practice.de.md) | Equivalent conceptual guide in German |
 
@@ -45,7 +52,15 @@ Transit samples for timelines and gate-change searches are now persisted and reu
 - Linked catalogs of 64 gates, 36 channels and seven circuits, plus a structured HD-entity catalog with separately imported, provenance-tracked texts.
 - A geometric gate-walk learning animation, **not** a planetary simulation.
 
-Continuous real-time/accelerated chronological planetary playback, automatic natal–transit synthesis, simultaneous multi-profile comparison and public multi-user operation are **not delivered**. Proposed work is separated from existing behavior in the documentation.
+Opt-in multi-user mode provides any number of owned profiles, paginated private
+lists, contact requests by verified email, revocable read-only grants, personal
+current-profile/locale preferences and server-side revocable sessions. Recipients
+cannot edit, delete, re-share or calculate missing natal results. Hosted operation
+still requires staging validation, protected secrets and provider-specific logging
+configuration; the Uberspace setup script has not been run on an actual target host.
+
+Continuous real-time/accelerated chronological planetary playback, automatic
+natal–transit synthesis and simultaneous multi-profile comparison are **not delivered**.
 
 Astrology and Human Design are interpretive frameworks, not established scientific explanations of personality or life events. Computed positions do not validate personal predictions; this application is not a diagnostic or treatment tool.
 

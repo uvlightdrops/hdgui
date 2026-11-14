@@ -33,12 +33,13 @@ def load_environment(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("install", "update", "run", "assign-owner"))
+    parser.add_argument("action", choices=("install", "update", "run", "assign-owner", "prune"))
     parser.add_argument("--platform", choices=("u7", "u8"))
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--port", type=int, default=8001)
     parser.add_argument("--python", default="python3.12")
     parser.add_argument("--owner", help="Bereits per E-Mail verifizierter Erstbesitzer")
+    parser.add_argument("--before", help="Zeitzonenbehafteter ISO-8601-Stichtag für prune")
     args = parser.parse_args()
     if not 1024 <= args.port <= 65535:
         parser.error("Port muss zwischen 1024 und 65535 liegen.")
@@ -49,6 +50,11 @@ def main():
             if not args.owner:
                 parser.error("--owner ist erforderlich.")
             return subprocess.run([str(python), "-m", "app.accounts", "--assign-owner", args.owner],
+                                  cwd=ROOT, check=True).returncode
+        if args.action == "prune":
+            if not args.before:
+                parser.error("--before ist erforderlich.")
+            return subprocess.run([str(python), "-m", "app.accounts", "--prune-before", args.before],
                                   cwd=ROOT, check=True).returncode
         if args.action == "run":
             os.chdir(ROOT)

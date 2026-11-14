@@ -1,0 +1,9 @@
+; Replace UBERSPACE_USER and the hdgui checkout path with the actual values.
+[program:hdgui]
+command=/home/UBERSPACE_USER/hdgui/.venv/bin/python /home/UBERSPACE_USER/hdgui/scripts/deploy/uberspace.py run --config /home/UBERSPACE_USER/etc/hdgui-runtime.json --port 8001
+directory=/home/UBERSPACE_USER/hdgui
+autostart=yes
+autorestart=yes
+startsecs=5
+redirect_stderr=true
+stdout_logfile=AUTO
