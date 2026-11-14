@@ -55,6 +55,8 @@ On updates, back up the database, update/install the project dependencies and ru
 
 **The expanded calculation cache requires revision `0005`.** After backing up and stopping the WebUI, run `.venv/bin/alembic upgrade head`, then restart. This adds `transit_samples` without changing existing profiles or catalog texts. Startup does not run migrations automatically; missing cache tables produce an explicit error.
 
+Revision `0006` adds persisted center-timeline samples. Revision `0007` adds the structured HD-entity catalog and complete natal-chart snapshots; it preserves existing activations and leaves newly added activation detail fields empty until recalculated. The migration seeds entity structure, including 384 gate-line text slots, but does not import descriptions. Run `alembic upgrade head` before using the entity catalog or recalculating complete birth charts.
+
 ## Configuration
 
 Set environment variables in the shell or process manager before running migrations, imports or the application. The application does not automatically load a `.env` file.
@@ -167,6 +169,18 @@ The UTF-8 YAML (optional BOM) must contain `schema_version: 2` and complete `gat
 All 64 gates, seven circuits and 36 unordered canonical channel pairs must occur exactly once. Circuit IDs are `integration`, `centering`, `knowing`, `ego`, `defense`, `logic`, `sensing`. Centers and assignments must match the migrated database. Unknown fields, wrong types, duplicate YAML keys and invalid relationships are rejected. Circuit names are unique; required text is nonempty. Gate descriptions and channel names/descriptions may be `null`.
 
 **Back up before importing into an existing installation.** Import is validated, atomic and idempotent for identical input, but is not a merge: it replaces all catalog names/descriptions, including clearing optional text with `null`. Reimporting the public sample overwrites custom wording. Profiles, saved SVGs, activations, settings and topology remain unchanged. Validation/database errors abort the whole transaction. Pages and tooltips use database texts on the next load, including rerendering cached views when texts change.
+
+### HD-entity texts
+
+The separate HD-entity catalog has its own partial, non-destructive text import. Revision `0007` creates the structural records; the packaged YAML supplies editable descriptions for those records, while all 384 gate-line entries remain empty text slots until written.
+
+```bash
+.venv/bin/python -m app.hd_catalog import
+.venv/bin/python -m app.hd_catalog import path/to/hd-entities.yaml
+.venv/bin/python -m app.hd_catalog export path/to/hd-entities.yaml
+```
+
+Import changes only listed entity names and descriptions; omitted records are retained. Human-authored descriptions cannot be replaced by another origin unless `--replace-human` is explicitly supplied. Export refuses to overwrite an existing file. Each description carries its own origin, author, model (or `unbekannt`), date and review status; keep AI-generated interpretations marked as drafts until reviewed. The catalog is displayed under **Wissen → HD-Entitäten**.
 
 ## Storage, time handling and global settings
 

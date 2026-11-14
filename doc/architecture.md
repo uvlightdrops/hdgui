@@ -34,17 +34,21 @@ The WebUI does not implement a second astronomical ephemeris or the engine's des
 | `api_client.py` | `/calculate` and `/bodygraph` transport, parsing and error translation |
 | `profiles.py`, `models.py`, `database.py` | Birth validation, cache keys, ORM models and session factory |
 | `natal.py` | Source validation, lazy persistence, derived gates/channels/centers and stale-result protection |
+| `natal_details.py`, `birth_charts.py` | Validate complete natal response details and persist/read the normalized birth-chart snapshot |
 | `transit.py`, `bodygraph.py`, `profile_svg.py` | Normalized positions, wheel/BodyGraph rendering and saved-profile SVG presentation |
 | `transit_service.py`, `gate_forecast.py` | Current snapshot/render cache and background future gate-change search |
 | `experiments.py`, `static/gate-timeline.js` | Sample planning/cache, progressive timeline data and navigation |
 | `center_timeline.py`, `static/center-timeline.js` | Combined natal/transit center definition, selectable timestamp BodyGraph and stacked center tracks |
 | `catalog_fixture.py`, `gate_descriptions.py` | Explicit complete-fixture validation/import and database-backed wording |
+| `hd_catalog.py` | Structured HD entity vocabulary, provenance-checked partial text import/export and dynamic cross registration |
 
 The app factory can accept a replacement client, which supports testing and a future provider boundary. Today this is a concrete client/adapter pattern, **not** a complete provider protocol, plugin registry or interchangeable engine framework.
 
 ## Domain and persistent data
 
 Birth profiles store a UUID, label, local birth time, IANA timezone, UTC instant and place label. SVG storage and natal-activation storage are independent; neither is a substitute for the other. Normalized natal rows distinguish `personality` and `design`, body, longitude, gate and line.
+
+Revision `0007` adds `hd_entities` for stable concept IDs and JSON structure with separately sourced editable descriptions. It seeds the fixed vocabulary and 384 gate-line slots; migration does not import prose. `birth_charts` stores one complete validated natal snapshot per profile, including normalized details, catalog links, unmapped API labels and the original JSON response. New color/tone/base activation values remain nullable for existing rows. Neither chart snapshots nor catalog prose are synthesized from SVGs.
 
 `ui_settings` contains global transit refresh preferences and nullable `active_profile_id`. Selecting a profile does not call the engine. Deleting it clears selection and deletes its dependent activation data. SQLite foreign-key enforcement is enabled; each request/service operation opens its own SQLAlchemy session.
 
@@ -54,7 +58,7 @@ Natal derivation reads database gate/channel topology and takes the union of per
 
 Database topology is not yet a single source for every renderer: frozen migrations and runtime rendering/domain constants retain overlapping gate/channel knowledge. A recommendation below addresses this duplication; do not describe the current code as a universally database-driven topology engine.
 
-Catalog pages expose gates, harmonic partners, channels and circuit relations. Tooltip/render text comes from database records. Historical profile-specific CSV annotations are not universal domain data. Fresh migrations need no private fixture; optional imports follow the [operations reference](operations.md#catalog-imports-and-private-fixtures).
+Catalog pages expose gates, harmonic partners, channels and circuit relations, plus the structured vocabulary at `/knowledge/entities`. Tooltip/render text comes from database records. Entity text import is partial and non-destructive; human-authored entries are protected unless replacement is explicit. Historical profile-specific CSV annotations are not universal domain data. Fresh migrations need no private fixture; optional imports follow the [operations reference](operations.md#catalog-imports-and-private-fixtures).
 
 ## API and presentation flows
 
@@ -63,6 +67,9 @@ Catalog pages expose gates, harmonic partners, channels and circuit relations. T
 | `/`, `/transit` | Current-only BodyGraph and zodiac wheel/table from the shared snapshot |
 | `/profiles` | Persistent profile management and saved charts; select one current profile |
 | `/profiles/current/overlay` | Lazily obtain/cache natal activations and derived relationships |
+| `/profiles/{profile_id}/analysis` | Read a current complete birth-chart snapshot; its POST action recalculates and persists it |
+| `/profiles/{profile_id}/chart` | Display the saved BodyGraph beside current catalog-linked properties, variables and centers; offer calculation when snapshot details are missing/stale |
+| `/knowledge/entities` | Browse structured HD entities and their separately sourced descriptions |
 | `/settings` | Global snapshot TTL and page autoreload |
 | `/gates`, `/channels` | Linked catalog; optional current-profile highlighting on gates |
 | `/experiments/gate-plot` | Sampled, zoomable gate timeline with optional fixed natal bands |
@@ -75,7 +82,7 @@ Catalog pages expose gates, harmonic partners, channels and circuit relations. T
 
 The transit zodiac's 64 gate sectors use the same center-based palette and `.65` fill opacity as the gate-walk zodiac after a complete round. All sectors are colored, not only currently active gates; active gate numbers retain their separate transit highlight.
 
-For transits, the adapter uses only `/calculate` → `gates.prs.Planets`; the engine's design positions are not current transits. Natal calculations use both `gates.prs.Planets` and `gates.des.Planets`, require nonempty valid lists with unique matching body sets, and never save invalid responses as empty activations.
+For transits, the adapter uses only `/calculate` → `gates.prs.Planets`; the engine's design positions are not current transits. Natal calculations use both `gates.prs.Planets` and `gates.des.Planets`, require nonempty valid lists with unique matching body sets, and never save invalid responses as empty activations. When complete `/calculate` details are available or requested, they are validated and saved atomically with activations; unknown labels stay explicit in `unmapped_values`, and the raw upstream response is retained as source data rather than interpreted locally.
 
 Profile SVG is XML-parsed and served as an image or a document with restrictive Content Security Policy, not inserted as untrusted page HTML. CSRF checks protect mutation forms. These measures do not establish an authenticated security boundary.
 

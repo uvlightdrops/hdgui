@@ -41,7 +41,7 @@ Transit samples for timelines and gate-change searches are now persisted and reu
 - Birth-profile creation, editing, deletion and persistent SVG charts; personality/design activations for one globally selected current profile.
 - A zoomable, sampled gate timeline, ephemeris tables and transit series; optional fixed natal bands on the timeline.
 - A personal center timeline (`/centers`): combined natal/transit BodyGraph at a selectable UTC timestamp, beside nine independently selectable sampled center-definition tracks, with controls below.
-- Linked catalogs of 64 gates, 36 channels and seven circuits, with explicitly imported local texts.
+- Linked catalogs of 64 gates, 36 channels and seven circuits, plus a structured HD-entity catalog with separately imported, provenance-tracked texts.
 - A geometric gate-walk learning animation, **not** a planetary simulation.
 
 Continuous real-time/accelerated chronological planetary playback, automatic natal–transit synthesis, simultaneous multi-profile comparison and public multi-user operation are **not delivered**. Proposed work is separated from existing behavior in the documentation.
