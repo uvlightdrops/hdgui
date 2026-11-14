@@ -17,7 +17,10 @@ from app.config import Settings
 from app.database import make_database
 from app.hd_catalog import PACKAGED_PATH, export_entities, import_entities
 from app.main import create_app
-from app.models import BirthActivation, BirthChart, BirthProfile, HdEntity
+from app.models import (
+    BirthActivation, BirthChart, BirthProfile, Channel, Circuit, Gate, HdEntity,
+    KnowledgeEntity, KnowledgeEntityText, UiSettings,
+)
 from app.profiles import activation_key, chart_key
 
 
@@ -32,6 +35,53 @@ def downgrade(url: str, revision: str) -> None:
 
 
 class HdCatalogMigrationTests(unittest.TestCase):
+    def test_unified_revision_copies_existing_text_nulls_and_provenance(self):
+        with tempfile.TemporaryDirectory() as temp:
+            url = f"sqlite:///{Path(temp) / 'copy-existing.db'}"
+            upgrade(url, "0007")
+            engine, sessions = make_database(url)
+            try:
+                with sessions.begin() as session:
+                    session.get(Gate, 1).name = "Existing gate"
+                    session.get(Gate, 1).description = None
+                    channel = session.scalar(select(Channel).where(
+                        Channel.gate_a == 1, Channel.gate_b == 8,
+                    ))
+                    channel.name = "Existing channel"
+                    channel.description = "Existing channel text"
+                    session.get(Circuit, "integration").description = None
+                    entity = session.get(HdEntity, "type.generator")
+                    entity.description = "Human text"
+                    entity.description_origin = "human"
+                    entity.description_author = "Author"
+                    entity.review_status = "reviewed"
+            finally:
+                engine.dispose()
+            upgrade(url)
+            engine, sessions = make_database(url)
+            try:
+                with sessions() as session:
+                    gate = session.get(KnowledgeEntityText, ("gate.1", "de", "human-design"))
+                    channel = session.get(
+                        KnowledgeEntityText, ("channel.1-8", "de", "human-design"),
+                    )
+                    circuit = session.get(
+                        KnowledgeEntityText, ("circuit.integration", "de", "human-design"),
+                    )
+                    hd_text = session.get(
+                        KnowledgeEntityText, ("type.generator", "de", "human-design"),
+                    )
+                self.assertEqual((gate.name, gate.description), ("Existing gate", None))
+                self.assertEqual((channel.name, channel.description),
+                                 ("Existing channel", "Existing channel text"))
+                self.assertIsNone(circuit.description)
+                self.assertEqual(
+                    (hd_text.description, hd_text.origin, hd_text.author, hd_text.review_status),
+                    ("Human text", "human", "Author", "reviewed"),
+                )
+            finally:
+                engine.dispose()
+
     def test_revision_seeds_catalog_and_preserves_activations(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "migration.db"
@@ -58,6 +108,19 @@ class HdCatalogMigrationTests(unittest.TestCase):
                     ).all())
                     last_gate_line = session.get(HdEntity, "gate-line.64.6")
                     activation = session.scalar(select(BirthActivation))
+                    knowledge_count = session.scalar(
+                        select(func.count()).select_from(KnowledgeEntity),
+                    )
+                    text_count = session.scalar(
+                        select(func.count()).select_from(KnowledgeEntityText),
+                    )
+                    migrated_gate_text = session.get(
+                        KnowledgeEntityText, ("gate.1", "de", "human-design"),
+                    )
+                    celestial_text = session.get(
+                        KnowledgeEntityText, ("body.Sun", "de", "astrology-symbolism"),
+                    )
+                    locale = session.get(UiSettings, 1).catalog_locale
                 self.assertEqual(counts, {
                     "aura": 4, "authority": 8, "base": 5, "body": 13, "center": 9,
                     "color": 6, "cross-angle": 3, "cognition": 6, "definition": 5,
@@ -67,6 +130,14 @@ class HdCatalogMigrationTests(unittest.TestCase):
                     "tone": 6, "type": 5, "variable": 4,
                 })
                 self.assertEqual(last_gate_line.structure, {"gate": 64, "line": 6})
+                self.assertEqual(knowledge_count, sum(counts.values()) + 107)
+                self.assertEqual(text_count, knowledge_count + 13)
+                self.assertEqual((migrated_gate_text.name, migrated_gate_text.description), ("Gate 1", None))
+                self.assertEqual(celestial_text.name, "Sonne")
+                self.assertEqual(celestial_text.metadata_json["symbol"], "☉")
+                self.assertEqual(celestial_text.origin, "ai")
+                self.assertEqual(celestial_text.model, "unbekannt")
+                self.assertEqual(locale, None)
                 self.assertIsNone(activation.color)
                 self.assertIsNone(activation.tone)
                 self.assertIsNone(activation.base)

@@ -6,7 +6,7 @@ scope: guides
 purpose: Documents installation, configuration, migration, catalog import, backup, security and troubleshooting procedures.
 created: 2026-10-09
 updated: 2026-11-14
-update_reason: Move into guides folder and link the planned multilingual catalog migration design.
+update_reason: Document revision 0008 and multilingual catalog operations.
 status: active
 semantic_blocks:
   - id: api-key-setup
@@ -27,7 +27,7 @@ relations:
     reason: Current system and implementation behavior.
   - target: ../architecture/knowledge-catalog-migration.md
     type: reference
-    reason: Proposed unified catalog schema and rollout.
+    reason: Shared localized catalog schema and deferred contract work.
   - target: ../features/feature-catalog.md
     type: reference
     reason: Delivered capabilities and limitations.
@@ -91,9 +91,9 @@ On updates, back up the database, update/install the project dependencies and ru
 
 **The expanded calculation cache requires revision `0005`.** After backing up and stopping the WebUI, run `.venv/bin/alembic upgrade head`, then restart. This adds `transit_samples` without changing existing profiles or catalog texts. Startup does not run migrations automatically; missing cache tables produce an explicit error.
 
-Revision `0006` adds persisted center-timeline samples. Revision `0007` adds the structured HD-entity catalog and complete natal-chart snapshots; it preserves existing activations and leaves newly added activation detail fields empty until recalculated. The migration seeds entity structure, including 384 gate-line text slots, but does not import descriptions. Run `alembic upgrade head` before using the entity catalog or recalculating complete birth charts.
+Revision `0006` adds persisted center-timeline samples. Revision `0007` adds the structured HD-entity catalog and complete natal-chart snapshots; it preserves existing activations and leaves newly added activation detail fields empty until recalculated. Revision `0008` adds shared knowledge identities, localized text records and catalog-language preference, then copies existing text and celestial-symbolism data without deleting legacy columns. Run `alembic upgrade head` after backing up and before using the migrated catalog.
 
-The future unified knowledge catalog and multilingual text store are a separate proposed expand–migrate–contract change, not part of revision `0007`. If implemented, Alembic will preserve and copy existing German catalog text automatically; no manual database migration or re-entry should be needed. See the [architecture and rollout plan](../architecture/knowledge-catalog-migration.md#expand-migrate-contract-rollout), including locale handling, provenance and the checks required before legacy columns are removed.
+Revision `0008` is additive and keeps the previous catalog columns for compatibility; do not downgrade after editing localized text because downgrade removes the new text store. The legacy-column cleanup is intentionally deferred to a separate, backed-up contract revision. See the [architecture and rollout plan](../architecture/knowledge-catalog-migration.md#expand-migrate-contract-rollout).
 
 ## Configuration [configuration]
 
@@ -212,7 +212,7 @@ All 64 gates, seven circuits and 36 unordered canonical channel pairs must occur
 
 ### HD-entity texts
 
-The separate HD-entity catalog has its own partial, non-destructive text import. Revision `0007` creates the structural records; the packaged YAML supplies editable descriptions for those records, while all 384 gate-line entries remain empty text slots until written.
+The HD-entity catalog has a partial, non-destructive text import. Revision `0007` creates the structural records; the packaged YAML supplies editable descriptions for those records, while all 384 gate-line entries remain empty text slots until written. Revision `0008` stores these localized texts in the shared catalog; import/export remains compatible with existing entity IDs.
 
 ```bash
 .venv/bin/python -m app.hd_catalog import
@@ -231,7 +231,7 @@ Select a profile under **Geburtsprofile → Als aktuell setzen**, then open **Ze
 
 The working view omits introductory headings and explanatory blocks. Its legend and sampling notes live under **Wissen → Grundlagen** (`/knowledge#center-timeline`), linked below the timeline. **Tore** and **Kanäle** are grouped under the expandable **Wissen** menu; their existing URLs remain unchanged.
 
-**Wissen → Himmelskörper** (`/knowledge/celestial-bodies`) provides a static table of the 13 usual activation sources, their glyphs and explicitly symbolic psychological-astrology interpretations. It requires neither a selected profile nor a calculation-service request.
+**Wissen → Himmelskörper** (`/knowledge/celestial-bodies`) displays the 13 usual activation sources, glyphs and symbolic interpretations from the shared localized catalog. It requires neither a selected profile nor a calculation-service request. Choose the catalog language under **Settings**; unavailable translations are visibly labeled with their actual fallback language. The surrounding interface is currently German.
 
 A center counts as defined only through a **complete channel** in the combined gate set. Natal-defined centers remain active throughout the window. Bars show sampled states, not exact switch times; hatching means not yet calculated. The graph's status text lists defined centers at the selected timestamp. On failure, use **Zeitraum laden** to retry; after changing the current profile or its birth time in another tab, reload the page. Natal activations and transit samples are persisted; the expanded transit cache requires migration `0005`.
 

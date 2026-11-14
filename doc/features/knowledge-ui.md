@@ -5,7 +5,7 @@ project: hdgui
 scope: features
 created: 2026-11-14 17
 updated: 2026-11-14 19
-update_reason: Document the delivered topic navigation, compatible links and optional profile highlighting.
+update_reason: Integrate topic navigation with the localized catalog introduced by revision 0008.
 status: active
 agent_project: hdgui
 ---
@@ -26,8 +26,11 @@ topic/category/entry workspace. The previous catalogs remain available with the
 shared navigation and their original entry anchors. Center-timeline help is at
 `/knowledge/help#center-timeline`; its old `/knowledge#center-timeline` anchor is
 retained in expandable help on the default page.
-The structured HD vocabulary exists, but the unified multilingual storage model
-is still a separate proposal. This navigation does not depend on that migration.
+Revision `0008` adds the shared identity and localized text registry. Both this
+workspace and the legacy pages resolve text through `app/knowledge_catalog.py`,
+using the saved catalog language or the request language and an explicitly
+marked German fallback. Structural data and numeric ordering remain independent
+of translations. Legacy text columns remain during the compatibility phase.
 
 ## Information architecture
 
@@ -49,7 +52,7 @@ analysis tool outside the knowledge catalog.
 
 Himmelskörper offers access to both the structured `body` entries and the existing
 symbolism page. Keep their source and context distinct; do not silently merge or
-overwrite their text before the knowledge-model migration.
+overwrite their text: the shared registry separates their text kinds.
 
 ## Navigation and layout
 
@@ -163,10 +166,11 @@ without losing its content; it is not an entity category. Keep the general
 interpretive-system warning and specific limitations around digestion,
 environment and cognition. Catalog labels are not health or lifestyle advice.
 
-The first release changes navigation and presentation only. It does not add text
-editing, global search, translations, new entity types or automatic
-interpretations. Localization and unified storage follow the separate
-[knowledge model proposal](../architecture/knowledge-catalog-migration.md).
+The navigation does not add text editing, global search, generated translations,
+new entity types or automatic interpretations. Catalog language selection is
+available in Settings; the surrounding UI remains German. The additive shared
+storage migration and remaining contract phase are documented in the
+[knowledge model](../architecture/knowledge-catalog-migration.md).
 
 ## Implementation and acceptance
 

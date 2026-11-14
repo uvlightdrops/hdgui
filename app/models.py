@@ -29,6 +29,7 @@ class UiSettings(Base):
     center_timeline_samples: Mapped[int] = mapped_column(
         Integer, nullable=False, default=64, server_default="64",
     )
+    catalog_locale: Mapped[str | None] = mapped_column(String(35))
     # Local single-user application: one global "current" profile, no owner yet.
     active_profile_id: Mapped[str | None] = mapped_column(
         String(36),
@@ -164,6 +165,45 @@ class HdEntity(Base):
     description_model: Mapped[str | None] = mapped_column(String(100))
     description_date: Mapped[str | None] = mapped_column(String(10))
     review_status: Mapped[str] = mapped_column(String(12), nullable=False, default="draft")
+
+
+class KnowledgeEntity(Base):
+    """Language-independent identity and structure shared by knowledge domains."""
+    __tablename__ = "knowledge_entities"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    domain: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    category: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    structure: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+
+class KnowledgeEntityText(Base):
+    """Localized, provenance-aware editorial content for one knowledge identity."""
+    __tablename__ = "knowledge_entity_texts"
+    __table_args__ = (
+        CheckConstraint(
+            "origin IN ('legacy', 'unwritten', 'ai', 'human')",
+            name="ck_knowledge_text_origin",
+        ),
+        CheckConstraint(
+            "review_status IN ('unknown', 'draft', 'reviewed')",
+            name="ck_knowledge_text_review",
+        ),
+    )
+
+    entity_id: Mapped[str] = mapped_column(
+        String(100), ForeignKey("knowledge_entities.id", ondelete="CASCADE"), primary_key=True,
+    )
+    locale: Mapped[str] = mapped_column(String(35), primary_key=True)
+    text_kind: Mapped[str] = mapped_column(String(40), primary_key=True)
+    name: Mapped[str | None] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text)
+    metadata_json: Mapped[dict] = mapped_column("metadata", JSON, nullable=False)
+    origin: Mapped[str] = mapped_column(String(12), nullable=False)
+    author: Mapped[str | None] = mapped_column(String(200))
+    model: Mapped[str | None] = mapped_column(String(100))
+    authored_at: Mapped[str | None] = mapped_column(String(10))
+    review_status: Mapped[str] = mapped_column(String(12), nullable=False)
 
 
 class BirthChart(Base):

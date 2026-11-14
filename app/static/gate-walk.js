@@ -130,6 +130,9 @@
             const description = descriptions[gate];
             document.getElementById("walk-gate-name").textContent = `Gate ${gate} · ${description.name}`;
             document.getElementById("walk-gate-description").textContent = description.description;
+            const locale = description.text_locale || "unbekannt";
+            document.getElementById("walk-gate-locale").textContent =
+                `Inhaltssprache: ${locale}${description.text_is_fallback ? " · Rückfall" : ""}`;
             document.getElementById("walk-gate-channel").textContent = description.channel;
             document.getElementById("walk-gate-link").href = `/gates#gate-${gate}`;
             zodiacSectors.forEach((sector, step) => {

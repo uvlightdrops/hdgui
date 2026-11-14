@@ -25,6 +25,7 @@
 {% for entity in entities %}
 <article id="{{ entity.id }}">
   <h3>{{ entity.name }}</h3>
+  <p class="timeline-muted">Inhaltssprache: {{ entity.text_locale or "unbekannt" }}{% if entity.text_is_fallback %} · Rückfall für {{ catalog_locale }}{% endif %}</p>
   <p><code>{{ entity.id }}</code></p>
   {% if entity.structure %}
   <dl class="knowledge-facts">
@@ -42,9 +43,15 @@
   {% if entity.description %}
   <p>{{ entity.description }}</p>
   <p class="timeline-muted">
-    {% if entity.description_origin == "ai" %}<strong>KI-Entwurf</strong>{% else %}<strong>Eigener Text</strong>{% endif %}
+    {% if entity.description_origin == "ai" %}<strong>KI-Entwurf</strong>
+    {% elif entity.description_origin == "human" %}<strong>Eigener Text</strong>
+    {% elif entity.description_origin == "legacy" %}<strong>Altbestand, Herkunft nicht verifiziert</strong>
+    {% else %}<strong>Herkunft nicht angegeben</strong>{% endif %}
     · {{ entity.description_author }}{% if entity.description_model %} · {{ entity.description_model }}{% endif %}
-    · {{ entity.description_date }} · {% if entity.review_status == "reviewed" %}als geprüft markiert{% else %}ungeprüfter Entwurf{% endif %}
+    · {{ entity.description_date or "Datum unbekannt" }} ·
+    {% if entity.review_status == "reviewed" %}als geprüft markiert
+    {% elif entity.review_status == "unknown" %}Prüfstatus unbekannt
+    {% else %}ungeprüfter Entwurf{% endif %}
   </p>
   {% else %}
   <p class="timeline-muted">Noch kein Beschreibungstext. Eigenen Text verfassen oder Entitätentexte importieren.</p>

@@ -24,6 +24,7 @@
     <h2 id="profile-properties-title">Wichtige Eigenschaften</h2>
     {% if analysis_current %}
     <p class="profile-muted">Aus der Geburtsberechnung · {{ analysis_calculated_at.strftime("%d.%m.%Y %H:%M") }} UTC</p>
+    <p class="profile-muted">Katalogsprache: {{ catalog_locale }}. Fehlende Übersetzungen sind als Rückfall gekennzeichnet.</p>
     <dl class="profile-property-list">
       {% for property in properties %}
       <div>
@@ -33,6 +34,7 @@
           <a href="{{ knowledge_url(property.entity.category, property.entity.id) }}">
             {{ property.value }}
           </a>
+          <span class="profile-muted">({{ property.entity.text_locale or "Sprache unbekannt" }}{% if property.entity.text_is_fallback %}, Rückfall{% endif %})</span>
           {% else %}
           {{ property.value }}
           <span class="profile-muted">(noch keinem Katalogeintrag zugeordnet)</span>
@@ -50,6 +52,7 @@
           {{ variable.value.name }}
           {% if variable.direction %}
           · <a href="{{ knowledge_url('direction', variable.direction.id) }}">{{ variable.direction.name }}</a>
+          <span class="profile-muted">({{ variable.direction.text_locale or "Sprache unbekannt" }}{% if variable.direction.text_is_fallback %}, Rückfall{% endif %})</span>
           {% else %}
           · {{ variable.value.value }}
           {% endif %}

@@ -15,7 +15,7 @@ from app.database import make_database
 from app.hd_catalog import CATEGORY_LABELS, import_entities
 from app.knowledge import TOPICS, knowledge_url, validate_mapping
 from app.main import create_app
-from app.models import BirthProfile, HdEntity, UiSettings
+from app.models import BirthProfile, KnowledgeEntityText, UiSettings
 
 
 class KnowledgeTests(unittest.TestCase):
@@ -61,10 +61,44 @@ class KnowledgeTests(unittest.TestCase):
         self.assertIn("KI-Entwurf", page.text)
         self.assertIn("unbekannt", page.text)
         with self.sessions.begin() as session:
-            session.get(HdEntity, "type.generator").review_status = "reviewed"
+            session.get(KnowledgeEntityText, ("type.generator", "de", "human-design")).review_status = "reviewed"
         page = self.web.get(knowledge_url("type", "type.generator"))
         self.assertIn("KI-Entwurf", page.text)
         self.assertIn("als geprüft markiert", page.text)
+
+    def test_workspace_and_legacy_pages_share_localized_texts(self):
+        with self.sessions.begin() as session:
+            for entity_id in ("type.generator", "gate.1", "channel.1-8", "circuit.integration"):
+                session.add(KnowledgeEntityText(
+                    entity_id=entity_id, locale="en", text_kind="human-design",
+                    name=f"English {entity_id}", description=f"English description {entity_id}",
+                    origin="human", author="Test", authored_at="2026-11-14",
+                    review_status="reviewed", metadata_json={},
+                ))
+        for category, entity_id, legacy in (
+            ("type", "type.generator", "/knowledge/entities?category=type"),
+            ("gate", "gate.1", "/gates"),
+            ("channel", "channel.1-8", "/channels"),
+            ("circuit", "circuit.integration", "/channels"),
+        ):
+            for path in (knowledge_url(category, entity_id), legacy):
+                with self.subTest(path=path):
+                    page = self.web.get(path, headers={"Accept-Language": "en"})
+                    self.assertEqual(page.status_code, 200)
+                    self.assertIn(f"English {entity_id}", page.text)
+                    self.assertIn(f"English description {entity_id}", page.text)
+                    self.assertIn("Inhaltssprache: en", page.text)
+                    self.assertIn('aria-label="Wissensbereiche"', page.text)
+        page = self.web.get(knowledge_url("authority", "authority.sacral"), headers={"Accept-Language": "en"})
+        self.assertIn("Inhaltssprache: de", page.text)
+        self.assertIn("Rückfall für en", page.text)
+        with self.sessions.begin() as session:
+            session.get(UiSettings, 1).catalog_locale = "de"
+        page = self.web.get(knowledge_url("type", "type.generator"), headers={"Accept-Language": "en"})
+        self.assertNotIn("English type.generator", page.text)
+        self.assertIn("Inhaltssprache: de", page.text)
+        self.api.transit.assert_not_called()
+        self.api.natal.assert_not_called()
 
     def test_gate_lines_are_numeric_and_bounded(self):
         page = self.web.get(knowledge_url("gate-line"))

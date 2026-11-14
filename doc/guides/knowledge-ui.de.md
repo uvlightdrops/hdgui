@@ -5,7 +5,7 @@ project: hdgui
 scope: guides
 created: 2026-11-14 17
 updated: 2026-11-14 19
-update_reason: Guide auf die umgesetzte Wissensnavigation und optionale Profilmarkierung aktualisiert.
+update_reason: Sprachwahl und gekennzeichnete Rückfalltexte im gemeinsamen Wissenskatalog ergänzen.
 status: active
 agent_project: hdgui
 ---
@@ -69,6 +69,12 @@ Die Textkennzeichnung zeigt Herkunft, Autor, gegebenenfalls Modell, Datum und
 Prüfstatus. Ein als geprüft markierter KI-Text bleibt ein KI-Text; Herkunft und
 Prüfung sind getrennte Angaben. Die Oberfläche ergänzt fehlende Beschreibungen
 nicht automatisch durch erfundene Deutungen.
+
+In **Settings** kannst du die Katalogsprache wählen. Ohne feste Auswahl wird
+die Browsersprache berücksichtigt. Fehlt der passende Text, erscheint der
+vorhandene deutsche Text mit seiner tatsächlichen Inhaltssprache und einem
+Rückfallhinweis. Die Sprache ändert weder die Eintragskennung noch Berechnungen;
+die Bedienoberfläche bleibt deutsch.
 
 Bei **Himmelskörpern** bleiben strukturierte HD-Einträge und symbolische
 Beschreibungen unterscheidbar. Die gemeinsame Navigation macht daraus keine

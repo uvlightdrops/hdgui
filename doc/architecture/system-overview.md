@@ -6,7 +6,7 @@ scope: architecture
 purpose: Describes the delivered runtime, domain boundaries, persistence, API flows, caches and limitations of HDGUI.
 created: 2026-10-09
 updated: 2026-11-14
-update_reason: Move into architecture documentation folder and separate the multilingual catalog migration design.
+update_reason: Document revision 0008 and the shared localized knowledge catalog.
 status: active
 semantic_blocks:
   - id: runtime-boundaries
@@ -22,7 +22,7 @@ relations:
     reason: Architecture documentation index.
   - target: knowledge-catalog-migration.md
     type: reference
-    reason: Proposed unified multilingual catalog schema and rollout.
+    reason: Shared localized catalog implementation and deferred contract phase.
   - target: ../guides/operations.md
     type: reference
     reason: Installation, database migrations, imports and operational procedures.
@@ -83,7 +83,7 @@ Birth profiles store a UUID, label, local birth time, IANA timezone, UTC instant
 
 Revision `0007` adds `hd_entities` for stable concept IDs and JSON structure with separately sourced editable descriptions. It seeds the fixed vocabulary and 384 gate-line slots; migration does not import prose. `birth_charts` stores one complete validated natal snapshot per profile, including normalized details, catalog links, unmapped API labels and the original JSON response. New color/tone/base activation values remain nullable for existing rows. Neither chart snapshots nor catalog prose are synthesized from SVGs.
 
-`ui_settings` contains global transit refresh preferences and nullable `active_profile_id`. Selecting a profile does not call the engine. Deleting it clears selection and deletes its dependent activation data. SQLite foreign-key enforcement is enabled; each request/service operation opens its own SQLAlchemy session.
+`ui_settings` contains global transit refresh preferences, the optional catalog locale and nullable `active_profile_id`. Selecting a profile does not call the engine. Deleting it clears selection and deletes its dependent activation data. SQLite foreign-key enforcement is enabled; each request/service operation opens its own SQLAlchemy session.
 
 Canonical topology comprises **64 gates, 36 unordered channel pairs and seven circuits**, created by frozen migrations. Each gate has a center; each channel has exactly one circuit. Integration includes 10–20, 10–57, 20–34 and 34–57; centering includes 10–34 and 25–51. Catalog imports can replace names/descriptions, not these relationships.
 
@@ -91,9 +91,9 @@ Natal derivation reads database gate/channel topology and takes the union of per
 
 Database topology is not yet a single source for every renderer: frozen migrations and runtime rendering/domain constants retain overlapping gate/channel knowledge. A recommendation below addresses this duplication; do not describe the current code as a universally database-driven topology engine.
 
-Catalog pages expose gates, harmonic partners, channels and circuit relations, plus the structured vocabulary at `/knowledge/entities`. Tooltip/render text comes from database records. Entity text import is partial and non-destructive; human-authored entries are protected unless replacement is explicit. Historical profile-specific CSV annotations are not universal domain data. Fresh migrations need no private fixture; optional imports follow the [operations reference](../guides/operations.md#catalog-imports).
+Revision `0008` adds `knowledge_entities` as the shared stable-identity registry and `knowledge_entity_texts` keyed by `(entity_id, locale, text_kind)`. Existing gate/channel/circuit structure and HD entity records remain in place as a compatibility layer; all catalog presentation reads localized text records. Importers update those records and legacy text columns atomically. Historical profile-specific CSV annotations are not universal domain data. The migration preserves legacy content and records unknown provenance explicitly; optional imports follow the [operations reference](../guides/operations.md#catalog-imports).
 
-The current knowledge-catalog structure and its proposed multilingual migration are described separately in the [unified catalog migration design](knowledge-catalog-migration.md#knowledge-model). Revision `0007` is the current schema; the unified data model is still a proposal.
+The [unified catalog migration design](knowledge-catalog-migration.md#knowledge-model) documents the implemented additive phase and pending legacy-table contract. Catalog language can be selected or negotiated from `Accept-Language`; missing translations visibly fall back to German. The current surrounding interface remains German.
 
 ## API and presentation flows [api-presentation-flows]
 

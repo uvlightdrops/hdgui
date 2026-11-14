@@ -24,6 +24,7 @@ from app.center_timeline import center_timeline_router
 from app.gate_descriptions import CatalogMissing, gate_descriptions, gate_tooltip
 from app.hd_catalog import CATEGORY_LABELS
 from app.knowledge import entity_order, knowledge_url, navigation, validate_mapping
+from app.knowledge_catalog import effective_locale, localized_record, resolve_texts
 from app.models import BirthProfile, Channel, Circuit, Gate, HdEntity, UiSettings
 from app.natal import (
     BODY_LABELS, CENTER_LABELS, SOURCE_LABELS, ChartUnavailable, NatalDataError, NatalService,
@@ -48,6 +49,7 @@ class SettingsInput(BaseModel):
     cache_seconds: Literal[60, 300, 600, 1800, 3600]
     autoreload: bool
     center_timeline_samples: Literal[32, 64, 160] = 64
+    catalog_locale: Literal["", "de", "en"] = ""
 
 
 def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
@@ -60,9 +62,13 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
     def descriptions():
         with sessions() as session:
             try:
-                return gate_descriptions(session)
+                return gate_descriptions(session, effective_locale(session))
             except CatalogMissing as exc:
                 raise HTTPException(500, str(exc)) from exc
+            except SQLAlchemyError as exc:
+                raise HTTPException(
+                    500, "Katalog oder Einstellungen fehlen. Bitte Alembic-Migrationen ausführen."
+                ) from exc
 
     client = chart_client or ChartClient(settings)
     samples = SampleCache(client, sessions, settings)
@@ -111,7 +117,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
             raise HTTPException(404, "Eintrag benötigt eine Kategorie.")
         context.update(workspace=True, selected_entity=entity, selected_gate=gate)
         if category in ("gate", "channel", "circuit"):
-            context.update(catalog_context())
+            context.update(catalog_context(request))
             entries = {
                 "gate": [(f"gate.{g.number}", f"Tor {g.number} · {g.name}") for g in context["gates"]],
                 "channel": [(f"channel.{c.gate_a}-{c.gate_b}", f"Kanal {c.gate_a}–{c.gate_b}") for c in context["channels"]],
@@ -125,9 +131,13 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         else:
             try:
                 with sessions() as session:
-                    entities = sorted(session.scalars(
+                    records = sorted(session.scalars(
                         select(HdEntity).where(HdEntity.category == category),
                     ).all(), key=entity_order)
+                    locale = effective_locale(session, request.headers.get("accept-language"))
+                    texts = resolve_texts(session, [row.id for row in records], locale)
+                    entities = [localized_record(row, texts.get(row.id)) for row in records]
+                    context["catalog_locale"] = locale
             except SQLAlchemyError as exc:
                 raise HTTPException(500, "Entitätenkatalog nicht verfügbar. Bitte Alembic-Migrationen ausführen.") from exc
             selected = next((row for row in entities if row.id == entity), None)
@@ -148,7 +158,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
             )
             if category == "center" and selected is not None:
                 context["center_gates"] = [
-                    row for row in catalog_context()["gates"] if row.center == selected.id.split(".", 1)[1]
+                    row for row in catalog_context(request)["gates"] if row.center == selected.id.split(".", 1)[1]
                 ]
             template = "hd_entities.html"
         return templates.TemplateResponse(
@@ -162,8 +172,36 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
 
     @app.get("/knowledge/celestial-bodies")
     def celestial_bodies_page(request: Request):
+        body_ids = (
+            "body.Sun", "body.Earth", "body.Moon", "body.Mercury", "body.Venus",
+            "body.Mars", "body.Jupiter", "body.Saturn", "body.Uranus", "body.Neptune",
+            "body.Pluto", "body.North_Node", "body.South_Node",
+        )
+        try:
+            with sessions() as session:
+                locale = effective_locale(session, request.headers.get("accept-language"))
+                texts = resolve_texts(session, body_ids, locale, "astrology-symbolism")
+                bodies = [
+                    {
+                        "id": entity_id,
+                        "name": resolved.record.name if resolved else entity_id,
+                        "description": resolved.record.description if resolved else None,
+                        "metadata": resolved.record.metadata_json if resolved else {},
+                        "locale": resolved.record.locale if resolved else None,
+                        "is_fallback": resolved.is_fallback if resolved else True,
+                        "review_status": resolved.record.review_status if resolved else "unknown",
+                    }
+                    for entity_id in body_ids
+                    for resolved in [texts.get(entity_id)]
+                ]
+        except SQLAlchemyError as exc:
+            raise HTTPException(
+                500, "Wissenskatalog nicht verfügbar. Bitte Alembic-Migrationen ausführen."
+            ) from exc
         return templates.TemplateResponse(
-            request=request, name="celestial_bodies.html", context=navigation(category="body"),
+            request=request, name="celestial_bodies.html",
+            context={"bodies": bodies, "catalog_locale": locale, **navigation(category="body")},
+            headers={"Cache-Control": "no-store"},
         )
 
     @app.get("/knowledge/entities")
@@ -172,24 +210,39 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
             raise HTTPException(404, "Unbekannte Entitäten-Kategorie.")
         try:
             with sessions() as session:
-                entities = session.scalars(
+                records = sorted(session.scalars(
                     select(HdEntity).where(HdEntity.category == category),
-                ).all()
+                ).all(), key=entity_order)
+                locale = effective_locale(session, request.headers.get("accept-language"))
+                texts = resolve_texts(session, [entity.id for entity in records], locale)
+                entities = [
+                    localized_record(entity, texts.get(entity.id))
+                    for entity in records
+                ]
         except SQLAlchemyError as exc:
             raise HTTPException(500, "Entitätenkatalog nicht verfügbar. Bitte Alembic-Migrationen ausführen.") from exc
         return templates.TemplateResponse(
             request=request, name="hd_entities.html",
-            context={"entities": sorted(entities, key=entity_order), **navigation(category=category)},
+            context={
+                "entities": entities, "catalog_locale": locale, **navigation(category=category),
+            },
             headers={"Cache-Control": "no-store"},
         )
 
-    def catalog_context():
+    def catalog_context(request):
         with sessions() as session:
             try:
                 load_topology(session)
                 circuits = session.scalars(select(Circuit).order_by(Circuit.id)).all()
                 gates = session.scalars(select(Gate).order_by(Gate.number)).all()
                 channels = session.scalars(select(Channel).order_by(Channel.gate_a, Channel.gate_b)).all()
+                locale = effective_locale(session, request.headers.get("accept-language"))
+                ids = (
+                    [f"circuit.{circuit.id}" for circuit in circuits]
+                    + [f"gate.{gate.number}" for gate in gates]
+                    + [f"channel.{channel.gate_a}-{channel.gate_b}" for channel in channels]
+                )
+                texts = resolve_texts(session, ids, locale)
             except (TopologyMissing, SQLAlchemyError) as exc:
                 if isinstance(exc, SQLAlchemyError):
                     raise HTTPException(
@@ -200,6 +253,20 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                 raise HTTPException(
                     500, "Kanonische Schaltkreise fehlen. Bitte Alembic-Migrationen ausführen."
                 )
+            gates = [
+                localized_record(gate, texts.get(f"gate.{gate.number}"))
+                for gate in gates
+            ]
+            channels = [
+                localized_record(
+                    channel, texts.get(f"channel.{channel.gate_a}-{channel.gate_b}"),
+                )
+                for channel in channels
+            ]
+            circuits = [
+                localized_record(circuit, texts.get(f"circuit.{circuit.id}"))
+                for circuit in circuits
+            ]
         relations = {gate.number: [] for gate in gates}
         for channel in channels:
             relations[channel.gate_a].append(channel)
@@ -210,20 +277,20 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         return {"gates": gates, "gate_map": {gate.number: gate for gate in gates},
                 "channels": channels, "relations": relations, "center_labels": CENTER_LABELS,
                 "circuits": circuits, "circuit_map": {circuit.id: circuit for circuit in circuits},
-                "circuit_members": circuit_members}
+                "circuit_members": circuit_members, "catalog_locale": locale}
 
     @app.get("/gates")
     def gates_page(request: Request):
         return templates.TemplateResponse(
             request=request, name="gates.html",
-            context={**catalog_context(), "current_profile": current_profile(), **navigation(category="gate")},
+            context={**catalog_context(request), "current_profile": current_profile(), **navigation(category="gate")},
             headers={"Cache-Control": "no-store"},
         )
 
     @app.get("/channels")
     def channels_page(request: Request):
         return templates.TemplateResponse(
-            request=request, name="channels.html", context={**catalog_context(), **navigation(category="channel")},
+            request=request, name="channels.html", context={**catalog_context(request), **navigation(category="channel")},
         )
 
     def token(request):
@@ -439,6 +506,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                 "cache_seconds": preferences.cache_seconds,
                 "autoreload": preferences.autoreload,
                 "center_timeline_samples": preferences.center_timeline_samples,
+                "catalog_locale": preferences.catalog_locale or "",
             }
         return settings_page(request, values)
 
@@ -458,6 +526,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
             "autoreload": form.get("autoreload", ""),
             "center_timeline_samples": int(raw_samples)
             if raw_samples in {str(v) for v, _ in TIMELINE_SAMPLE_OPTIONS} else 0,
+            "catalog_locale": str(form.get("catalog_locale", "")),
         }
         try:
             data = SettingsInput.model_validate(values)
@@ -470,6 +539,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
             preferences.cache_seconds = data.cache_seconds
             preferences.autoreload = data.autoreload
             preferences.center_timeline_samples = data.center_timeline_samples
+            preferences.catalog_locale = data.catalog_locale or None
         return RedirectResponse("/settings", status_code=303)
 
     @app.get("/profiles/{profile_id}/edit")
@@ -589,13 +659,21 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
         variables = []
         centers = None
         calculated_at = None
+        catalog_locale = "de"
         if chart_is_current:
             with sessions() as session:
-                entities = {
+                records = {
                     entity.id: entity
                     for entity in session.scalars(
                         select(HdEntity).where(HdEntity.id.in_(set(chart.catalog_links.values()))),
                     )
+                }
+                locale = effective_locale(session, request.headers.get("accept-language"))
+                catalog_locale = locale
+                texts = resolve_texts(session, set(records), locale)
+                entities = {
+                    entity_id: localized_record(entity, texts.get(entity_id))
+                    for entity_id, entity in records.items()
                 }
             fields = (
                 ("Typ", "energy_type", "energy_type"),
@@ -640,6 +718,7 @@ def create_app(settings: Settings | None = None, chart_client=None) -> FastAPI:
                 "variables": variables, "centers": centers, "analysis_current": chart_is_current,
                 "analysis_stale": chart is not None and not chart_is_current,
                 "analysis_calculated_at": calculated_at,
+                "catalog_locale": catalog_locale,
             },
             headers={"Cache-Control": "no-store"},
         )
