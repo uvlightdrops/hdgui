@@ -29,11 +29,11 @@ This folder separates the description of the delivered system from proposals for
 | File | Status | Purpose | Semantic blocks |
 |---|---|---|---|
 | [System Architecture](system-overview.md) | active | Runtime, domain, persistence, API flows, caches and current limitations | runtime-boundaries, module-responsibilities, domain-persistence, api-presentation-flows, cache-concurrency, accuracy-limitations, proposed-developments |
-| [Unified Knowledge Catalog](knowledge-catalog-migration.md) | draft | Proposed shared multilingual entity/text model and safe migration plan | knowledge-model, multilingual-content, expand-migrate-contract-rollout |
+| [Unified Knowledge Catalog](knowledge-catalog-migration.md) | active | Shared multilingual entity/text model, implemented additive migration and pending contract phase | knowledge-model, multilingual-content, expand-migrate-contract-rollout |
 
 ## Navigation [navigation]
 
 - Start with [System Architecture](system-overview.md) for what is implemented today.
-- Read [Unified Knowledge Catalog](knowledge-catalog-migration.md) for the future-state proposal; it is not implemented by current migrations.
+- Read [Unified Knowledge Catalog](knowledge-catalog-migration.md) for revision `0008` behavior and the remaining contract work.
 - See [Operations](../guides/operations.md) for commands, backups and existing database migrations.
 - See [Feature Catalog](../features/feature-catalog.md) for user-facing capabilities.

@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.config import Settings
 from app.database import make_database
 from app.gate_descriptions import CatalogMissing, gate_descriptions
+from app.knowledge_catalog import upsert_text
 from app.models import Channel, Circuit, Gate
 
 
@@ -116,7 +117,7 @@ def resolve_default_path():
     return DEFAULT_PATH if DEFAULT_PATH.is_file() else PACKAGED_DEFAULT_PATH
 
 
-def import_fixture(sessions, path=None):
+def import_fixture(sessions, path=None, *, replace_human=False):
     """Replace all catalog texts atomically, never topology or profile activation."""
     selected_path = resolve_default_path() if path is None else path
     with sessions.begin() as session:
@@ -136,12 +137,24 @@ def import_fixture(sessions, path=None):
         )
         for gate in gates:
             record = gate_texts[gate.number]
+            upsert_text(
+                session, f"gate.{gate.number}", name=record.name, description=record.description,
+                replace_human=replace_human,
+            )
             gate.name, gate.description = record.name, record.description
         for circuit in circuit_rows:
             record = circuit_texts[circuit.id]
+            upsert_text(
+                session, f"circuit.{circuit.id}", name=record.name,
+                description=record.description, replace_human=replace_human,
+            )
             circuit.name, circuit.description = record.name, record.description
         for channel in channels:
             record = channel_texts[(channel.gate_a, channel.gate_b)]
+            upsert_text(
+                session, f"channel.{channel.gate_a}-{channel.gate_b}",
+                name=record.name, description=record.description, replace_human=replace_human,
+            )
             channel.name, channel.description = record.name, record.description
     return len(gate_texts), len(channel_texts)
 
@@ -149,11 +162,14 @@ def import_fixture(sessions, path=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("path", nargs="?", type=Path)
+    parser.add_argument("--replace-human", action="store_true")
     args = parser.parse_args()
     selected_path = resolve_default_path() if args.path is None else args.path
     engine, sessions = make_database(Settings().database_url)
     try:
-        gates, channels = import_fixture(sessions, selected_path)
+        gates, channels = import_fixture(
+            sessions, selected_path, replace_human=args.replace_human,
+        )
     except (OSError, ValueError, CatalogMissing, SQLAlchemyError) as exc:
         parser.exit(1, f"Katalogimport fehlgeschlagen: {exc}\n")
     finally:

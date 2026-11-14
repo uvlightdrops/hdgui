@@ -13,7 +13,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.catalog_fixture import FixtureRecord, UniqueKeyLoader
 from app.config import Settings
 from app.database import make_database
-from app.models import HdEntity
+from app.knowledge_catalog import upsert_text
+from app.models import HdEntity, KnowledgeEntity, KnowledgeEntityText
 
 PACKAGED_PATH = Path(__file__).parent / "data" / "hd-entities.yaml"
 CATEGORY_LABELS = {
@@ -96,6 +97,12 @@ def ensure_cross(session: Session, structure: CrossStructure, name: str) -> HdEn
         session.flush()
     elif entity.category != "cross" or entity.structure != structure.model_dump():
         raise ValueError("Inkarnationskreuz-Kennung und gespeicherte Struktur widersprechen sich.")
+    if session.get(KnowledgeEntity, structure.entity_id()) is None:
+        session.add(KnowledgeEntity(
+            id=structure.entity_id(), domain="human-design", category="cross",
+            structure=structure.model_dump(),
+        ))
+        session.flush()
     return entity
 
 
@@ -113,6 +120,15 @@ def apply_text(session: Session, record: EntityText, replace_human: bool) -> Non
     incoming_origin = record.provenance.origin if record.provenance else "unwritten"
     if entity.description_origin == "human" and incoming_origin != "human" and not replace_human:
         raise ValueError(f"{record.id}: Eigener Text geschützt; Ersetzung nur mit --replace-human.")
+    upsert_text(
+        session, record.id, name=record.name, description=record.description,
+        origin=incoming_origin,
+        author=record.provenance.author if record.provenance else None,
+        model=record.provenance.model if record.provenance else None,
+        authored_at=record.provenance.written_at.isoformat() if record.provenance else None,
+        review_status=record.provenance.status if record.provenance else "unknown",
+        replace_human=replace_human,
+    )
     entity.name, entity.description = record.name, record.description
     entity.description_origin = incoming_origin
     entity.description_author = record.provenance.author if record.provenance else None
@@ -139,17 +155,32 @@ def import_entities(
 def export_entities(sessions: sessionmaker, path: Path) -> None:
     """Export editable records without overwriting an existing local file."""
     with sessions() as session:
+        texts = {
+            record.entity_id: record
+            for record in session.scalars(select(KnowledgeEntityText).where(
+                KnowledgeEntityText.locale == "de",
+                KnowledgeEntityText.text_kind == "human-design",
+            ))
+        }
         records = []
         for entity in session.scalars(select(HdEntity).order_by(HdEntity.id)):
+            text = texts.get(entity.id)
+            name = text.name if text else entity.name
+            description = text.description if text else entity.description
+            origin = text.origin if text else entity.description_origin
+            author = text.author if text else entity.description_author
+            model = text.model if text else entity.description_model
+            authored_at = text.authored_at if text else entity.description_date
+            review_status = text.review_status if text else entity.review_status
             provenance = None
-            if entity.description_origin != "unwritten":
+            if origin not in ("unwritten", "legacy"):
                 provenance = {
-                    "origin": entity.description_origin, "author": entity.description_author,
-                    "model": entity.description_model, "written_at": entity.description_date,
-                    "status": entity.review_status,
+                    "origin": origin, "author": author,
+                    "model": model, "written_at": authored_at,
+                    "status": review_status,
                 }
             records.append({
-                "id": entity.id, "name": entity.name, "description": entity.description,
+                "id": entity.id, "name": name, "description": description,
                 "structure": entity.structure, "provenance": provenance,
             })
     fixture = EntityFixture.model_validate({"schema_version": 1, "entities": records})

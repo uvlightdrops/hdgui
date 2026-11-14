@@ -1,0 +1,141 @@
+# KI-Autorschaft: GitHub Copilot (zugrunde liegendes Modell nicht identifiziert), 2026-10-25.
+# Übernahme des bestehenden Katalogtexts aus der Wissensseite; keine neuen Deutungen.
+schema_version: 1
+entities:
+  - id: body.Sun
+    name: Sonne
+    description: >-
+      Identität, Lebenskraft und bewusster Selbstausdruck. Symbolisiert das Streben,
+      ein eigenes Zentrum zu finden und das Leben schöpferisch zu gestalten; als
+      Spannungsfeld können Selbstbezogenheit oder Abhängigkeit von Anerkennung
+      betrachtet werden.
+    metadata:
+      symbol: "☉"
+      symbol_aria: Sonnensymbol
+      reflection_question: Was lässt mich lebendig werden, auch ohne Bestätigung von außen?
+  - id: body.Earth
+    name: Erde
+    description: >-
+      Im Human Design als Gegenpol zur Sonne mit Erdung, Halt und Verkörperung
+      verbunden. In üblichen geozentrischen westlichen Geburtshoroskopen wird die
+      Erde nicht als eigener Planet gedeutet; diese Zuordnung ist daher keine
+      allgemein geteilte astrologische Planetenbedeutung.
+    metadata:
+      symbol: "⊕"
+      symbol_aria: Erdsymbol
+      reflection_question: Was gibt mir im Alltag Boden und hilft mir, Einsichten praktisch zu leben?
+  - id: body.Moon
+    name: Mond
+    description: >-
+      Gefühlsleben, Geborgenheit, Erinnerungen und gewohnte Reaktionen. Steht
+      symbolisch für Bedürfnisse und die Fähigkeit, sich selbst zu nähren; das
+      Spannungsfeld liegt zwischen Schutz und dem Festhalten an Vertrautem.
+    metadata:
+      symbol: "☽"
+      symbol_aria: Mondsymbol
+      reflection_question: Was brauche ich, um mich innerlich sicher und gut versorgt zu fühlen?
+  - id: body.Mercury
+    name: Merkur
+    description: >-
+      Wahrnehmen, Denken, Lernen und sprachlicher Austausch. Symbolisiert die
+      Vermittlung zwischen innerer Erfahrung und äußerer Welt; Neugier und
+      Verständigung stehen möglichem Grübeln oder vorschnellen Urteilen gegenüber.
+    metadata:
+      symbol: "☿"
+      symbol_aria: Merkursymbol
+      reflection_question: Wie kann ich meine Erfahrung klar ausdrücken und zugleich offen zuhören?
+  - id: body.Venus
+    name: Venus
+    description: >-
+      Werte, Zuneigung, Genuss, Schönheit und Beziehungsgestaltung. Verweist auf
+      das, was als liebenswert und kostbar erlebt wird; Harmonie kann dabei mit
+      Anpassung oder dem Vermeiden notwendiger Konflikte in Spannung geraten.
+    metadata:
+      symbol: "♀"
+      symbol_aria: Venussymbol
+      reflection_question: Was ist mir wirklich wertvoll, und wie bleibe ich in Beziehungen mir selbst treu?
+  - id: body.Mars
+    name: Mars
+    description: >-
+      Antrieb, Begehren, Mut und Durchsetzung. Symbolisiert die Fähigkeit, ins
+      Handeln zu kommen und Grenzen zu vertreten; als Spannungsfeld gelten
+      impulsives Kämpfen oder das Unterdrücken eigener Wünsche.
+    metadata:
+      symbol: "♂"
+      symbol_aria: Marssymbol
+      reflection_question: Wofür möchte ich eintreten, und wie kann ich meine Kraft verantwortlich einsetzen?
+  - id: body.Jupiter
+    name: Jupiter
+    description: >-
+      Sinnsuche, Zuversicht, Lernen und Erweiterung des Horizonts. Steht für
+      Vertrauen und das Einordnen von Erfahrungen in größere Zusammenhänge;
+      mögliche Schattenmotive sind Maßlosigkeit oder die Gewissheit, allein recht
+      zu haben.
+    metadata:
+      symbol: "♃"
+      symbol_aria: Jupitersymbol
+      reflection_question: Welche Überzeugung trägt mich, und wo darf ich meine Sicht erweitern?
+  - id: body.Saturn
+    name: Saturn
+    description: >-
+      Struktur, Grenzen, Verantwortung und Reifung über Zeit. Symbolisiert
+      Verlässlichkeit und das Anerkennen von Wirklichkeit; als Spannungsfeld
+      können übermäßige Strenge, Versagensangst oder starre Selbstbegrenzung
+      reflektiert werden.
+    metadata:
+      symbol: "♄"
+      symbol_aria: Saturnsymbol
+      reflection_question: Welche Grenze schützt mich, und welche Begrenzung halte ich nur aus Gewohnheit aufrecht?
+  - id: body.Uranus
+    name: Uranus
+    description: >-
+      Eigenständigkeit, Erneuerung und das Aufbrechen gewohnter Muster. Steht
+      symbolisch für überraschende Einsichten und Freiheit; mögliche Spannungen
+      entstehen zwischen echter Unabhängigkeit und bloßer Opposition oder Unruhe.
+    metadata:
+      symbol: "♅"
+      symbol_aria: Uranussymbol
+      reflection_question: Wo wünsche ich mir eine stimmige Veränderung statt eines Bruchs um des Bruchs willen?
+  - id: body.Neptune
+    name: Neptun
+    description: >-
+      Vorstellungskraft, Mitgefühl, Sehnsucht und spirituelles Verbundensein.
+      Symbolisiert durchlässige Grenzen und die Suche nach etwas Größerem;
+      Idealisierung, Unklarheit oder Realitätsflucht bilden mögliche Gegenpole.
+    metadata:
+      symbol: "♆"
+      symbol_aria: Neptunsymbol
+      reflection_question: Was inspiriert mich, und wie unterscheide ich meine Sehnsucht von überprüfbarer Wirklichkeit?
+  - id: body.Pluto
+    name: Pluto
+    description: >-
+      Wandlung, Macht, Loslassen und die Auseinandersetzung mit verborgenen
+      Motiven. Steht symbolisch für tiefgreifende Veränderung; das Spannungsfeld
+      umfasst Kontrollbedürfnis und die Bereitschaft, nicht mehr Tragfähiges
+      freizugeben.
+    metadata:
+      symbol: "♇"
+      symbol_aria: Plutosymbol
+      reflection_question: Woran halte ich aus Angst fest, und wo ist ein bewusster Umgang mit Einfluss nötig?
+  - id: body.North_Node
+    name: Nördlicher Mondknoten
+    description: >-
+      In vielen modernen Deutungen ein Bild für ungewohnte Lernrichtungen und
+      Entwicklungsmöglichkeiten. Kein Himmelskörper, sondern der aufsteigende
+      Schnittpunkt der Mondbahn mit der Ekliptik; er schreibt kein verbindliches
+      Lebensziel vor.
+    metadata:
+      symbol: "☊"
+      symbol_aria: Symbol des aufsteigenden Mondknotens
+      reflection_question: Welche neue Haltung möchte ich erproben, auch wenn sie sich noch ungewohnt anfühlt?
+  - id: body.South_Node
+    name: Südlicher Mondknoten
+    description: >-
+      In vielen modernen Deutungen ein Bild für vertraute Fähigkeiten, Gewohnheiten
+      und leicht verfügbare Reaktionsmuster. Der absteigende Schnittpunkt der
+      Mondbahn mit der Ekliptik liegt dem nördlichen Knoten gegenüber. Vertrautes
+      gilt dabei nicht grundsätzlich als schlecht oder als zu überwindender Fehler.
+    metadata:
+      symbol: "☋"
+      symbol_aria: Symbol des absteigenden Mondknotens
+      reflection_question: Welche vertraute Stärke unterstützt mich, und wann wird sie zur automatischen Einschränkung?

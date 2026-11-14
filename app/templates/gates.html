@@ -3,6 +3,7 @@
 <section class="catalog-page" aria-label="Torübersicht">
 <h1>Tore</h1>
 <p>64 Tore · <a href="/channels">Alle 36 Kanäle</a></p>
+<p class="timeline-muted">Angeforderte Katalogsprache: {{ catalog_locale }}</p>
 {% if current_profile and current_profile.error %}
 <p role="alert">{{ current_profile.error }}</p>
 {% elif current_profile %}
@@ -22,6 +23,7 @@
   <h2>Gate {{ gate.number }} · {{ gate.name }}</h2>
   <p class="catalog-activation" hidden></p>
   <p>{{ gate.description or 'Für dieses Tor ist noch keine Beschreibung hinterlegt.' }}</p>
+  <p class="timeline-muted">Inhaltssprache: {{ gate.text_locale or "unbekannt" }}{% if gate.text_is_fallback %} · Rückfall für {{ catalog_locale }}{% endif %}</p>
   <p><strong>Zentrum:</strong> {{ center_labels[gate.center] }}</p>
   <p><strong>Verbindungen:</strong>
   {% for channel in relations[gate.number] %}

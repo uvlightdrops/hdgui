@@ -17,7 +17,7 @@ from app.config import Settings
 from app.database import make_database
 from app.experiments import SampleBusy
 from app.main import create_app
-from app.models import BirthProfile, Gate, UiSettings
+from app.models import BirthProfile, KnowledgeEntityText, UiSettings
 from app.natal import NatalActivations, Topology
 from app.transit import TransitFrame, TransitPosition
 
@@ -195,7 +195,9 @@ class CenterTimelineTests(unittest.TestCase):
             self.assertEqual(first.json()["svg"], second.json()["svg"])
             self.assertEqual(render.call_count, 1)
             with self.sessions.begin() as session:
-                session.get(Gate, 64).name = "Updated catalog label"
+                session.get(
+                    KnowledgeEntityText, ("gate.64", "de", "human-design"),
+                ).name = "Updated catalog label"
             changed = self.web.get("/centers/frame", params=params)
             self.assertIn("Updated catalog label", changed.json()["svg"])
             self.assertEqual(render.call_count, 2)

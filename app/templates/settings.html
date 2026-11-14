@@ -15,6 +15,14 @@
       <option value="false" {% if values.autoreload == false %}selected{% endif %}>Nein</option>
     </select>
   </label>
+  <label>Katalogsprache
+    <select name="catalog_locale">
+      <option value="" {% if values.catalog_locale == "" %}selected{% endif %}>Automatisch aus Browser-Sprache (Standard: Deutsch)</option>
+      <option value="de" {% if values.catalog_locale == "de" %}selected{% endif %}>Deutsch</option>
+      <option value="en" {% if values.catalog_locale == "en" %}selected{% endif %}>English</option>
+    </select>
+  </label>
+  <p>Gilt für lokalisierte Wissenskatalogtexte. Fehlt eine Übersetzung, wird die tatsächliche Inhaltssprache angezeigt.</p>
   <p>Gilt für alle Betrachter. Autoreload verwendet das gewählte Cache-Intervall. Bereits offene Transit-Seiten übernehmen die Änderung beim nächsten Laden.</p>
   <button type="submit">Speichern</button>
 </form>

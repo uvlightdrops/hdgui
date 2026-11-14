@@ -3,6 +3,7 @@
 <section class="catalog-page" aria-label="Kanalübersicht">
 <h1>Kanäle</h1>
 <p>36 Kanäle · <a href="/gates">Alle 64 Tore</a></p>
+<p class="timeline-muted">Angeforderte Katalogsprache: {{ catalog_locale }}</p>
 <nav class="gate-index" aria-label="Kanal auswählen">
 {% for channel in channels %}<a href="#channel-{{ channel.gate_a }}-{{ channel.gate_b }}" title="{{ channel.name or 'Kanal ohne hinterlegten Namen' }}">{{ channel.gate_a }}–{{ channel.gate_b }}</a>{% endfor %}
 </nav>
@@ -13,6 +14,7 @@
 <section class="gate-description" id="circuit-{{ circuit.id }}">
   <h2>{{ circuit.name }}</h2>
   <p>{{ circuit.description or 'Für diesen Schaltkreis ist noch keine Beschreibung hinterlegt.' }}</p>
+  <p class="timeline-muted">Inhaltssprache: {{ circuit.text_locale or "unbekannt" }}{% if circuit.text_is_fallback %} · Rückfall für {{ catalog_locale }}{% endif %}</p>
   <p><strong>Kanäle:</strong>
   {% for channel in circuit_members[circuit.id] %}<a href="#channel-{{ channel.gate_a }}-{{ channel.gate_b }}">{{ channel.gate_a }}–{{ channel.gate_b }}</a>{% if not loop.last %} · {% endif %}{% endfor %}
   </p>
@@ -22,6 +24,7 @@
 <article class="gate-description" id="channel-{{ channel.gate_a }}-{{ channel.gate_b }}">
   <h2>Kanal {{ channel.gate_a }}–{{ channel.gate_b }}{% if channel.name %} · {{ channel.name }}{% endif %}</h2>
   <p>{{ channel.description or 'Für diesen Kanal ist noch keine Beschreibung hinterlegt.' }}</p>
+  <p class="timeline-muted">Inhaltssprache: {{ channel.text_locale or "unbekannt" }}{% if channel.text_is_fallback %} · Rückfall für {{ catalog_locale }}{% endif %}</p>
   <p><strong>Schaltkreis:</strong> <a href="#circuit-{{ channel.circuit_id }}">{{ circuit_map[channel.circuit_id].name }}</a></p>
   <p><strong>Tore und Zentren:</strong>
   {% for number in [channel.gate_a, channel.gate_b] %}

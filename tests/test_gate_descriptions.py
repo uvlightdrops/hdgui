@@ -43,12 +43,12 @@ class GateDescriptionTests(unittest.TestCase):
             # Migration may read its own source/config, but not catalog fixtures.
             original = Path.open
 
-            def no_fixture(path, *args, **kwargs):
-                if path.suffix in (".csv", ".yaml"):
+            def no_private_fixture(path, *args, **kwargs):
+                if path.suffix in (".csv", ".yaml") and path.name != "celestial-bodies.yaml":
                     raise AssertionError("Migration must not read fixtures")
                 return original(path, *args, **kwargs)
 
-            with patch.object(Path, "open", no_fixture):
+            with patch.object(Path, "open", no_private_fixture):
                 command.upgrade(Config("alembic.ini"), "head")
         engine, sessions = make_database(f"sqlite:///{Path(self.temp.name) / 'missing.db'}")
         try:
