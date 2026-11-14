@@ -6,7 +6,7 @@ scope: architecture
 purpose: Describes the delivered runtime, domain boundaries, persistence, API flows, caches and limitations of HDGUI.
 created: 2026-10-09
 updated: 2026-11-14
-update_reason: Describe opt-in account boundaries and external multi-user calculation hosting.
+update_reason: Describe the consolidated gate timeline and position table.
 status: active
 semantic_blocks:
   - id: runtime-boundaries
@@ -118,12 +118,12 @@ The [unified catalog migration design](knowledge-catalog-migration.md#knowledge-
 | `/knowledge/entities` | Browse structured HD entities and their separately sourced descriptions |
 | `/settings` | Global snapshot TTL and page autoreload |
 | `/gates`, `/channels` | Linked catalog; optional current-profile highlighting on gates |
-| `/experiments/gate-plot` | Sampled, zoomable gate timeline with optional fixed natal bands |
+| `/experiments/gate-plot` | Zoomable sampled graphic and position table with shared selection; optional fixed natal bands in the graphic |
 | `/experiments/timeline` | Validate window and return a sample plan, without calculation |
 | `/experiments/frame` | Fetch/cache one actual timestamp, all returned bodies |
 | `/centers` | Current personal BodyGraph with a selected transit and nine independently selectable center tracks |
 | `/centers/frame` | Validate current profile, combine natal and transit gates, derive canonical channels/centers; optionally render a local SVG |
-| `/experiments/ephemeris`, `/experiments/series` | Explicitly loaded UTC position/series tables |
+| `/experiments/ephemeris`, `/experiments/series` | Legacy UTC position tables, retained for existing links but no longer in the menu |
 | `/experiments/gate-walk` | API-independent geometric zodiac-order learning animation |
 
 The transit zodiac's 64 gate sectors use the same center-based palette and `.65` fill opacity as the gate-walk zodiac after a complete round. All sectors are colored, not only currently active gates; active gate numbers retain their separate transit highlight.
@@ -133,6 +133,8 @@ For transits, the adapter uses only `/calculate` → `gates.prs.Planets`; the en
 Profile SVG is XML-parsed and served as an image or a document with restrictive Content Security Policy, not inserted as untrusted page HTML. CSRF checks protect mutation forms. These measures do not establish an authenticated security boundary.
 
 Timeline natal overlays are fixed personality/design bands, with textual/tabular alternatives. They do not claim that natal positions move. One successful overlay load is reused within the page; disabled/stale responses are discarded. Profile selection in another tab takes effect after a page reload.
+
+The gate timeline's table shares the graphic's range and body selection. It displays sign-relative degrees and minutes, absolute longitude, gate and line. The table can reuse the adaptive plan or request an exact single UTC timestamp or fixed 1-, 6- or 24-hour intervals from the start; a non-aligned end is not added. The client limits fixed plans to 160 timestamps and loads each through the existing bounded `/experiments/frame` worker and shared cache. The zodiac conversion uses the same sign order and nearest-arcminute rounding as the legacy ephemeris.
 
 The **center timeline** is a separate combined view, not a change to the transit-only home graph. It unions natal personality/design gates with each sampled transit's gates, then uses `natal.derive` and database topology to find complete channels and their defined centers. One hanging gate never defines a center. Natal-defined centers remain defined throughout; transit-only channels and mixed natal/transit channels also count. SVG channel halves distinguish personality (black), design (red) and transit (blue); gold centers reflect the combined definition.
 

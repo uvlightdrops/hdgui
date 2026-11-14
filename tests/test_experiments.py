@@ -169,6 +169,10 @@ class ExperimentTests(unittest.TestCase):
                 response = web.get(f"/experiments/{page}")
                 self.assertEqual(response.status_code, 200)
                 self.assertIn(f'data-page="{page}"', response.text)
+            self.assertIn('id="timeline-table-view"', response.text)
+            self.assertIn('data-zodiac-signs=', response.text)
+            self.assertNotIn('href="/experiments/ephemeris"', response.text)
+            self.assertNotIn('href="/experiments/series"', response.text)
             params = {"start": "2026-10-08T12:00:00Z", "days": 1}
             response = web.get("/experiments/data", params=params)
             self.assertEqual(response.status_code, 200)

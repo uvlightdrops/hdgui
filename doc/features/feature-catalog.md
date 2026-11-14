@@ -56,9 +56,9 @@ calculations; HDGUI presents results and manages profiles, settings and cached d
 
 ## Timeline analysis [timeline-analysis]
 
-- **Gate timeline (`/experiments/gate-plot`)** provides a zoomable, sampled view of gate and line changes, with optional fixed natal reference bands.
-- **Timeline sampling (`/experiments/timeline`, `/experiments/frame`)** validates a time window and loads calculations for requested UTC timestamps. Loaded samples can be reused by timeline, ephemeris, series and gate-change searches.
-- **Ephemeris and transit series (`/experiments/ephemeris`, `/experiments/series`)** show explicitly requested position samples and series.
+- **Gate timeline (`/experiments/gate-plot`)** combines a zoomable graphic with a spacious table. Both share the UTC range and body selection; the graphic supports fixed natal reference bands.
+- **Position table** shows each selected body's zodiac sign and degrees/minutes, absolute longitude, gate and line. It can use the graphic's adaptive samples, an exact single timestamp, or hourly, six-hourly or daily samples starting at the selected start. Fixed series include the end only when it falls on the interval and are limited to 160 timestamps. See the [German guide](../guides/gate-verlauf.de.md).
+- **Timeline sampling (`/experiments/timeline`, `/experiments/frame`)** validates a time window and loads calculations for requested UTC timestamps. Samples can be reused across views and gate-change searches. The former ephemeris and series URLs remain accessible for existing links, but are no longer in the menu.
 - **Sampling is discrete.** Lines connect neighboring successful samples; they do not prove every intermediate state, and short transitions can be missed.
 
 ## Personal center timeline [center-timeline]

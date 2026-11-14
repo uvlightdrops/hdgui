@@ -23,8 +23,6 @@
       <a href="/profiles/new" {% if request.url.path == "/profiles/new" %}aria-current="page"{% endif %}>Profil anlegen</a>
     </details>
     <a href="/knowledge" {% if request.url.path.startswith("/knowledge") or request.url.path in ["/gates", "/channels"] %}aria-current="page"{% endif %}>Wissen</a>
-    <a href="/experiments/ephemeris" {% if request.url.path == "/experiments/ephemeris" %}aria-current="page"{% endif %}>Ephemeriden</a>
-    <a href="/experiments/series" {% if request.url.path == "/experiments/series" %}aria-current="page"{% endif %}>Zeitreihe</a>
     <a href="/settings" {% if request.url.path == "/settings" %}aria-current="page"{% endif %}>Settings</a>
     {% if request.app.state.account_service %}
     <a href="/contacts" {% if request.url.path.startswith("/contacts") %}aria-current="page"{% endif %}>Kontakte</a>

@@ -43,6 +43,17 @@
         }
         return result;
     }
+    function fixedTimestamps(start, end, hours) {
+        const step = hours * 3600000;
+        const count = Math.floor((end - start) / step) + 1;
+        if (count > 160) throw new Error("Höchstens 160 Zeitpunkte: Zeitraum verkürzen oder einen größeren Abstand wählen.");
+        return Array.from({length: count}, (_, i) => new Date(start + i * step).toISOString());
+    }
+    function zodiacPosition(longitude, signs) {
+        const minutes = Math.round(((longitude % 360 + 360) % 360) * 60) % (360 * 60);
+        const sign = Math.floor(minutes / 1800), remainder = minutes % 1800;
+        return `${String(Math.floor(remainder / 60)).padStart(2, "0")}° ${signs[sign]} ${String(remainder % 60).padStart(2, "0")}′`;
+    }
     const NATAL_SOURCES = ["personality", "design"];
     function validOverlay(overlay) {
         const valid = item => item && typeof item.body === "string" && Number.isInteger(item.gate) &&
@@ -65,12 +76,13 @@
     }
     if (typeof module !== "undefined" && module.exports) {
         module.exports = {clampViewport, zoomViewport, panViewport, adjacentSegments, prioritized,
-            validOverlay, natalBands, MIN_TIME, MAX_TIME, MIN_SPAN};
+            validOverlay, natalBands, fixedTimestamps, zodiacPosition, MIN_TIME, MAX_TIME, MIN_SPAN};
     }
     if (typeof document === "undefined") return;
     const root = document.getElementById("gate-timeline");
     if (!root) return;
     let gateOrder = JSON.parse(root.dataset?.gateOrder || "[]");
+    const signs = JSON.parse(root.dataset?.zodiacSigns || "[]");
     const byId = id => document.getElementById(`timeline-${id}`);
     const form = byId("range"), chart = byId("chart"), status = byId("status");
     const knownBodies = [
@@ -90,6 +102,9 @@
     const bodies = new Map(), data = new Map(), expires = new Map();
     let defaultSelected = true;
     let view = clampViewport(Date.now() - 43200000, Date.now() + 43200000);
+    let display = "graph", singleTimestamp = null;
+    const interval = byId("interval");
+    const singleMode = () => display === "table" && interval.value === "single";
     let plan = null, generation = 0, queue = [], active = false, debounce, planAbort;
     let failed = new Set(), phase = "planning", lastError = "", rendered = false, inspectIndex = 0;
     const format = new Intl.DateTimeFormat("de-DE", {timeZone: "UTC", day: "2-digit",
@@ -121,8 +136,9 @@
         swatch.style.backgroundColor = body.color;
         input.setAttribute("aria-label", body.label);
         wrapper.title = body.label;
-        wrapper.append(input, swatch, node("span",
-            `${bodySymbols[key] || ""} ${body.label.slice(0, 2)}`.trim()));
+        body.labelNode = node("span",
+            `${bodySymbols[key] || ""} ${display === "table" ? body.label : body.label.slice(0, 2)}`.trim());
+        wrapper.append(input, swatch, body.labelNode);
         input.addEventListener("change", () => {
             body.selected = input.checked;
             scheduleRender();
@@ -222,7 +238,7 @@
         scheduleRender();
     });
     function syncControls() {
-        form.elements.start.value = localValue(view.start);
+        form.elements.start.value = localValue(singleMode() ? singleTimestamp : view.start);
         form.elements.end.value = localValue(view.end);
         const span = view.end - view.start;
         byId("zoom").value = 1000 * (1 - Math.log(span / MIN_SPAN) / Math.log(MAX_SPAN / MIN_SPAN));
@@ -245,7 +261,10 @@
         const prefix = phase === "planning" ? "Neuer Zeitraum wird vorbereitet … Vorhandene Punkte sind eine Vorschau."
             : phase === "error" ? `Zeitraum konnte nicht geladen werden: ${lastError}`
             : `${loading ? "Berechnung läuft" : failed.size ? "Teilweise berechnet" : "Berechnung vollständig"}: ${loaded}/${total} Zeitpunkte`;
-        status.textContent = `${prefix}${plan ? ` · UTC ${dateLabel(plan.start)} – ${dateLabel(plan.end)} · Raster ${duration(plan.step_seconds * 1000)} (Randabstände ggf. kürzer).` : ""}${failed.size ? ` ${failed.size} Zeitpunkte nicht geladen: ${lastError}` : ""}`;
+        const sampling = plan?.step_seconds
+            ? ` · Raster ${duration(plan.step_seconds * 1000)}${plan.fixed ? " ab Start" : " (Randabstände ggf. kürzer)"}`
+            : " · Einzelzeitpunkt";
+        status.textContent = `${prefix}${plan ? ` · UTC ${dateLabel(plan.start)}${plan.start === plan.end ? "" : ` – ${dateLabel(plan.end)}`}${sampling}.` : ""}${failed.size ? ` ${failed.size} Zeitpunkte nicht geladen: ${lastError}` : ""}`;
     }
     function scheduleRender() {
         if (rendered) return;
@@ -284,8 +303,16 @@
             for (const [key, expiry] of expires) {
                 if (expiry <= Date.now()) {data.delete(key); expires.delete(key);}
             }
-            const params = new URLSearchParams({start: iso(view.start), end: iso(view.end), samples: form.elements.samples.value});
-            const result = await responseJSON(await fetch(`/experiments/timeline?${params}`, {signal: controller.signal}));
+            let result;
+            if (display === "table" && interval.value !== "sample") {
+                const start = singleMode() ? singleTimestamp : view.start;
+                const timestamps = singleMode() ? [iso(start)] : fixedTimestamps(start, view.end, Number(interval.value));
+                result = {start: iso(start), end: singleMode() ? iso(start) : iso(view.end), timestamps,
+                    step_seconds: singleMode() ? 0 : Number(interval.value) * 3600, fixed: true, gate_order: gateOrder};
+            } else {
+                const params = new URLSearchParams({start: iso(view.start), end: iso(view.end), samples: form.elements.samples.value});
+                result = await responseJSON(await fetch(`/experiments/timeline?${params}`, {signal: controller.signal}));
+            }
             if (version !== generation) return;
             plan = result;
             gateOrder = plan.gate_order;
@@ -360,6 +387,10 @@
     }
     function render() {
         updateStatus();
+        if (display === "table") {
+            renderTable();
+            return;
+        }
         const width = Math.max(200, chart.clientWidth);
         const height = 850, left = 48, right = width - 18, top = 25, bottom = height - 75;
         const ns = "http://www.w3.org/2000/svg";
@@ -451,27 +482,32 @@
         renderTable();
     }
     function renderTable() {
-        if (!byId("table").parentElement.open) return;
-        const table = node("table"), head = node("thead"), row = node("tr"), tbody = node("tbody");
-        table.append(node("caption", "Tatsächlich berechnete Zeitpunkte (UTC), nur aktive Himmelskörper"));
-        for (const title of ["Zeit (UTC)", "Himmelskörper", "Gate.Linie", "Länge"]) {
-            const th = node("th", title);
-            th.scope = "col";
-            row.append(th);
-        }
-        head.append(row);
-        table.append(head, tbody);
-        for (const t of plan?.timestamps || []) {
-            const frame = data.get(t);
-            if (!frame) continue;
-            for (const p of frame.positions) {
-                if (!bodies.get(p.body)?.selected) continue;
-                const tr = node("tr");
-                [dateLabel(frame.timestamp_utc), bodies.get(p.body).label, `${p.gate}.${p.line}`, `${p.longitude.toFixed(3)}°`].forEach(value => tr.append(node("td", value)));
-                tbody.append(tr);
+        const targets = [];
+        if (byId("table").parentElement.open && display === "graph") targets.push(byId("table"));
+        if (display === "table") targets.push(byId("full-table"));
+        for (const target of targets) {
+            const table = node("table"), head = node("thead"), row = node("tr"), tbody = node("tbody");
+            table.append(node("caption", "Tatsächlich berechnete Zeitpunkte (UTC), nur aktive Himmelskörper"));
+            for (const title of ["Zeit (UTC)", "Himmelskörper", "Tierkreisposition", "Länge", "Gate.Linie"]) {
+                const th = node("th", title);
+                th.scope = "col";
+                row.append(th);
             }
+            head.append(row);
+            table.append(head, tbody);
+            for (const t of plan?.timestamps || []) {
+                const frame = data.get(t);
+                if (!frame) continue;
+                for (const p of frame.positions) {
+                    if (!bodies.get(p.body)?.selected) continue;
+                    const tr = node("tr");
+                    [dateLabel(frame.timestamp_utc), bodies.get(p.body).label, zodiacPosition(p.longitude, signs),
+                        `${p.longitude.toFixed(3)}°`, `${p.gate}.${p.line}`].forEach(value => tr.append(node("td", value)));
+                    tbody.append(tr);
+                }
+            }
+            target.replaceChildren(table);
         }
-        byId("table").replaceChildren(table);
     }
     byId("table").parentElement.addEventListener("toggle", renderTable);
     function inspect(timestamp) {
@@ -492,12 +528,53 @@
     function applyRange() {
         const start = parseInput(form.elements.start), end = parseInput(form.elements.end);
         form.elements.end.setCustomValidity("");
-        if (!Number.isFinite(start) || !Number.isFinite(end) || end - start < MIN_SPAN) {
+        if (!singleMode() && (!Number.isFinite(start) || !Number.isFinite(end) || end - start < MIN_SPAN)) {
             form.elements.end.setCustomValidity("Das Ende muss mindestens eine Stunde nach dem Start liegen.");
         }
         if (!form.reportValidity()) return;
+        if (singleMode()) {
+            singleTimestamp = start;
+            changeViewport(view);
+            return;
+        }
         changeViewport(clampViewport(start, end));
     }
+    function setDisplay(next) {
+        display = next;
+        byId("graph-view").setAttribute("aria-pressed", String(display === "graph"));
+        byId("table-view").setAttribute("aria-pressed", String(display === "table"));
+        for (const id of ["graph-panel", "toolbar", "natal-panel", "help"]) byId(id).hidden = display !== "graph";
+        byId("table-panel").hidden = display !== "table";
+        byId("interval-label").hidden = display !== "table";
+        byId("samples-label").hidden = display === "table" && interval.value !== "sample";
+        byId("end-label").hidden = singleMode();
+        form.elements.end.disabled = singleMode();
+        form.elements.end.setCustomValidity("");
+        for (const [key, body] of bodies) {
+            body.labelNode.textContent = `${bodySymbols[key] || ""} ${display === "table" ? body.label : body.label.slice(0, 2)}`.trim();
+        }
+        changeViewport(view);
+    }
+    function leaveSingle() {
+        if (singleTimestamp !== null) {
+            view = clampViewport(singleTimestamp, singleTimestamp + view.end - view.start);
+            singleTimestamp = null;
+        }
+    }
+    byId("graph-view").addEventListener("click", () => {
+        if (display !== "graph") {if (singleMode()) leaveSingle(); setDisplay("graph");}
+    });
+    byId("table-view").addEventListener("click", () => {
+        if (display !== "table") {
+            if (interval.value === "single") singleTimestamp = view.start;
+            setDisplay("table");
+        }
+    });
+    interval.addEventListener("change", () => {
+        if (interval.value === "single") singleTimestamp = view.start;
+        else leaveSingle();
+        setDisplay("table");
+    });
     form.addEventListener("submit", event => {event.preventDefault(); applyRange();});
     for (const input of [form.elements.start, form.elements.end]) {
         input.addEventListener("input", () => form.elements.end.setCustomValidity(""));

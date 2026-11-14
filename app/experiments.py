@@ -255,7 +255,7 @@ def experiment_router(client, templates, current_profile=lambda: None, descripti
         return templates.TemplateResponse(
             request=request, name="timeline.html" if page == "gate-plot" else "experiment.html",
             context={"page": page, "title": title, "description": description,
-                     "gate_order": GATES,
+                     "gate_order": GATES, "zodiac_signs": SIGNS,
                      "current_profile": current_profile(request) if page == "gate-plot" else None,
                      "start": datetime.now(UTC).strftime("%Y-%m-%dT%H:00")},
         )

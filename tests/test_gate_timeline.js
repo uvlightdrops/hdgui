@@ -1,6 +1,6 @@
 "use strict";
 const assert = require("node:assert/strict");
-const {clampViewport, zoomViewport, panViewport, adjacentSegments, prioritized, validOverlay, natalBands,
+const {clampViewport, zoomViewport, panViewport, adjacentSegments, prioritized, validOverlay, natalBands, fixedTimestamps, zodiacPosition,
     MIN_TIME, MAX_TIME, MIN_SPAN} = require("../app/static/gate-timeline.js");
 
 const view = {start: Date.UTC(2026, 9, 8), end: Date.UTC(2026, 9, 9)};
@@ -44,6 +44,18 @@ const bands = natalBands(overlay);
 assert.deepEqual([...bands.keys()].sort((a, b) => a - b), [34, 47, 64]);
 assert.deepEqual(bands.get(64).personality.map(p => p.body), ["Sun"]);
 assert.deepEqual(bands.get(64).design.map(p => p.body), ["Earth"], "Sources stay separate per gate");
+const signs = ["Widder", "Stier", "Zwillinge", "Krebs", "Löwe", "Jungfrau",
+    "Waage", "Skorpion", "Schütze", "Steinbock", "Wassermann", "Fische"];
+assert.equal(zodiacPosition(194.123, signs), "14° Waage 07′");
+assert.equal(zodiacPosition(29.9999, signs), "00° Stier 00′");
+assert.equal(zodiacPosition(359.9999, signs), "00° Widder 00′");
+assert.equal(fixedTimestamps(view.start, view.start + 159 * 3600000, 1).length, 160);
+assert.throws(() => fixedTimestamps(view.start, view.start + 160 * 3600000, 1), /160/);
+assert.deepEqual(fixedTimestamps(view.start, view.start + 6500000, 1), [
+    new Date(view.start).toISOString(), new Date(view.start + 3600000).toISOString()
+], "A non-aligned end is not invented as a fixed sample");
+assert.equal(fixedTimestamps(view.start, view.end, 6).length, 5);
+assert.equal(fixedTimestamps(view.start, view.end, 24).length, 2);
 console.log("Gate timeline: viewport, bounds, cyclic paths and progressive sampling passed.");
 
 // Exercise the actual browser controller with a minimal DOM, controlled fetches and no framework.
@@ -339,7 +351,87 @@ async function overlayErrorTests() {
     console.log("Gate timeline overlay: API failure, changed profile and missing profile passed.");
 }
 
+async function tableControllerTests() {
+    const ids = new Map(), raf = [], fetched = [];
+    const get = id => {
+        if (!ids.has(id)) ids.set(id, new Element());
+        return ids.get(id);
+    };
+    get("gate-timeline").dataset.zodiacSigns = JSON.stringify(signs);
+    get("timeline-interval").value = "sample";
+    const form = get("timeline-range");
+    form.elements = {start: new Element("input"), end: new Element("input"), samples: new Element("select")};
+    form.elements.samples.value = "64";
+    new Element("details").append(get("timeline-table"));
+    const response = payload => ({ok: true, headers: {get: () => "application/json"}, json: async () => payload});
+    const fetch = async url => {
+        const parsed = new URL(url, "http://localhost");
+        if (parsed.pathname === "/experiments/timeline") {
+            const start = parsed.searchParams.get("start"), end = parsed.searchParams.get("end");
+            return response({start, end, timestamps: [start, end], gate_order: order, step_seconds: 3600});
+        }
+        assert.equal(parsed.pathname, "/experiments/frame");
+        const timestamp = parsed.searchParams.get("timestamp");
+        fetched.push(timestamp);
+        return response({timestamp_utc: timestamp, positions: [
+            {body: "Sun", gate: 12, line: 3, longitude: 29.9999},
+            {body: "Moon", gate: 10, line: 2, longitude: 194.123}
+        ]});
+    };
+    const sandbox = {
+        document: {getElementById: get, createElement: tag => new Element(tag), createElementNS: (_, tag) => new Element(tag)},
+        window: {addEventListener() {}}, fetch, URLSearchParams, Intl, Date, AbortController,
+        setTimeout: (fn, ms) => setTimeout(fn, ms === 250 ? 5 : ms), clearTimeout,
+        requestAnimationFrame: fn => raf.push(fn), console
+    };
+    const tick = async () => {await new Promise(resolve => setTimeout(resolve, 25)); while (raf.length) raf.shift()();};
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../app/static/gate-timeline.js"), "utf8"), sandbox);
+    await tick();
+    get("timeline-table-view").fire("click");
+    get("timeline-interval").value = "1";
+    get("timeline-interval").fire("change");
+    form.elements.start.value = "2026-01-01T00:00:00";
+    form.elements.end.value = "2026-01-01T02:30:00";
+    form.fire("submit");
+    await tick();
+    const rows = () => get("timeline-full-table").children[0].children[2].children;
+    assert.equal(rows().length, 6);
+    assert.deepEqual(rows()[0].children.map(cell => cell.textContent).slice(1),
+        ["Sonne", "00° Stier 00′", "30.000°", "12.3"]);
+    assert.match(get("timeline-status").textContent, /3\/3 Zeitpunkte.*Raster 1 Std\. ab Start/);
+    assert(fetched.includes("2026-01-01T02:00:00.000Z"));
+    assert(!fetched.includes("2026-01-01T02:30:00.000Z"));
+    get("timeline-none").fire("click");
+    await tick();
+    assert.equal(rows().length, 0);
+    get("timeline-all").fire("click");
+    await tick();
+    assert.equal(rows().length, 6);
+    form.elements.end.value = "2026-01-08T00:00:00";
+    const before = fetched.length;
+    form.fire("submit");
+    await tick();
+    assert.match(get("timeline-status").textContent, /Höchstens 160/);
+    assert.equal(fetched.length, before, "Over-limit table is rejected before fetching");
+    get("timeline-interval").value = "single";
+    get("timeline-interval").fire("change");
+    form.elements.start.value = "2026-01-03T12:34:56";
+    form.fire("submit");
+    await tick();
+    assert.equal(rows().length, 2);
+    assert(fetched.includes("2026-01-03T12:34:56.000Z"));
+    assert.match(get("timeline-status").textContent, /Einzelzeitpunkt/);
+    assert.equal(form.elements.end.disabled, true);
+    get("timeline-graph-view").fire("click");
+    await tick();
+    assert.equal(form.elements.start.value, "2026-01-03T12:34:56");
+    assert.equal(form.elements.end.disabled, false);
+    assert.equal(get("timeline-graph-panel").hidden, false);
+    console.log("Gate timeline table: fixed intervals, single timestamp, filtering and limits passed.");
+}
+
 browserControllerTests()
     .then(overlayControllerTests)
     .then(overlayErrorTests)
+    .then(tableControllerTests)
     .catch(error => {console.error(error); process.exitCode = 1;});
