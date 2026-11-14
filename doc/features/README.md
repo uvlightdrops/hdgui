@@ -5,8 +5,8 @@ agent_project: hdgui
 scope: features
 purpose: Indexes documentation for delivered user-facing HDGUI features.
 created: 2026-11-14
-updated: 2026-11-14
-update_reason: Create a semantic documentation hub for the feature catalog.
+updated: 2026-11-14 19
+update_reason: Mark the topic-based knowledge UI as delivered.
 status: active
 semantic_blocks:
   - id: feature-documents
@@ -29,6 +29,7 @@ This folder describes user-visible behavior and distinguishes delivered features
 | File | Status | Purpose | Semantic blocks |
 |---|---|---|---|
 | [Feature Catalog](feature-catalog.md) | active | Inventory of delivered features and limitations | transit-exploration, birth-profiles, timeline-analysis, center-timeline, catalogs-learning, settings-data, not-delivered |
+| [Knowledge UI](knowledge-ui.md) | active | Four-topic navigation, category mapping, route state and acceptance criteria | Information architecture, navigation, implementation and acceptance |
 
 ## Navigation [navigation]
 

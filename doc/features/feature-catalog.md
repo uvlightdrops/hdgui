@@ -8,7 +8,7 @@ scope: features
 purpose: This page inventories the user-facing features currently delivered by HDGUI and distinguishes them from proposed or unavailable behavior.
 created: 2026-11-11
 updated: 2026-11-14
-update_reason: Document HD entity catalog and persisted complete natal snapshots
+update_reason: Document topic-based knowledge navigation alongside the entity catalog.
 status: active
 semantic_blocks:
   - id: transit-exploration
@@ -68,6 +68,7 @@ The tracks reuse bounded samples. Unloaded gaps remain visible, short transition
 
 - **Gate and channel catalogs (`/gates`, `/channels`)** connect the 64 gates, 36 channels and seven circuits, with optional highlighting from the selected profile.
 - **HD entity catalog (`/knowledge/entities`)** lists the structured Human Design vocabulary and 384 gate-line text slots. Descriptions are separately imported and retain per-entry authorship and review provenance.
+- **Knowledge workspace (`/knowledge`)** groups catalogs into Grundlagen, BodyGraph, Variablen and Inkarnationskreuze, with category/entry selection and direct links. Torlinien selects a gate before its six lines; legacy catalog anchors remain available. See [Knowledge UI](knowledge-ui.md) and the [German guide](../guides/knowledge-ui.de.md).
 - **Gate walk (`/experiments/gate-walk`)** is a geometric learning animation that follows the zodiac order and gate-center relationships. It is not a planetary simulation or chronological playback.
 - Catalog descriptions are local text data and may be explicitly imported; the catalog's structural relationships are application data.
 
